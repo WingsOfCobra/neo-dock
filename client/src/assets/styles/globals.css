@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neo-bg-deep: #08080C;
+  --color-neo-bg-base: #0F0F14;
+  --color-neo-bg-surface: #161620;
+  --color-neo-bg-elevated: #1C1C28;
+  --color-neo-border: #2A2A3A;
+  --color-neo-red: #C5003C;
+  --color-neo-red-dim: #880425;
+  --color-neo-cyan: #55EAD4;
+  --color-neo-cyan-dim: #2A7A6E;
+  --color-neo-yellow: #F3E600;
+  --color-neo-yellow-dim: #8A8200;
+  --color-neo-text-primary: #E8E8EC;
+  --color-neo-text-secondary: #8A8A9A;
+  --color-neo-text-disabled: #4A4A55;
+  --font-display: 'Orbitron', sans-serif;
+  --font-body: 'Rajdhani', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #08080C;
+  color: #E8E8EC;
+  font-family: 'Rajdhani', sans-serif;
+  overflow: hidden;
+}
+
+/* Scan-line overlay */
+.scan-lines::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+}
+
+/* Noise texture overlay */
+.noise-overlay::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0F0F14; }
+::-webkit-scrollbar-thumb { background: #2A2A3A; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #55EAD4; }
+
+/* Chamfered corner clip-path for cards */
+.chamfer {
+  clip-path: polygon(
+    12px 0%, calc(100% - 12px) 0%,
+    100% 12px, 100% calc(100% - 12px),
+    calc(100% - 12px) 100%, 12px 100%,
+    0% calc(100% - 12px), 0% 12px
+  );
+}
+
+.chamfer-sm {
+  clip-path: polygon(
+    6px 0%, calc(100% - 6px) 0%,
+    100% 6px, 100% calc(100% - 6px),
+    calc(100% - 6px) 100%, 6px 100%,
+    0% calc(100% - 6px), 0% 6px
+  );
+}
+
+/* react-grid-layout styles */
+.react-grid-layout {
+  position: relative;
+}
+.react-grid-item {
+  transition: all 200ms ease;
+}
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 100;
+  opacity: 0.8;
+}
+.react-grid-placeholder {
+  background: rgba(85, 234, 212, 0.1) !important;
+  border: 1px dashed rgba(85, 234, 212, 0.3) !important;
+  border-radius: 0 !important;
+}
+.react-resizable-handle {
+  background: none !important;
+}
+.react-resizable-handle::after {
+  border-color: #55EAD4 !important;
+  width: 8px !important;
+  height: 8px !important;
+}

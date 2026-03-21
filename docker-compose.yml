@@ -1,0 +1,20 @@
+services:
+  neo-dock:
+    image: ghcr.io/wingscobra/neo-dock:latest
+    container_name: neo-dock
+    restart: unless-stopped
+    ports:
+      - "${NEO_DOCK_PORT:-3000}:3000"
+    env_file:
+      - .env
+    volumes:
+      - neo-dock-data:/app/data
+    networks:
+      - neo-dock
+
+volumes:
+  neo-dock-data:
+
+networks:
+  neo-dock:
+    driver: bridge
