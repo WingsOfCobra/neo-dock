@@ -6,15 +6,16 @@ interface TabDef {
   to: string;
   label: string;
   shortLabel: string;
+  shortcut: string;
 }
 
 const TABS: TabDef[] = [
-  { to: '/', label: 'DASHBOARD', shortLabel: 'DASH' },
-  { to: '/system', label: 'SYSTEM', shortLabel: 'SYS' },
-  { to: '/docker', label: 'DOCKER', shortLabel: 'DCK' },
-  { to: '/comms', label: 'COMMS', shortLabel: 'COM' },
-  { to: '/tasks', label: 'TASKS', shortLabel: 'TSK' },
-  { to: '/logs', label: 'LOGS', shortLabel: 'LOG' },
+  { to: '/', label: 'DASHBOARD', shortLabel: 'DASH', shortcut: 'g+d' },
+  { to: '/system', label: 'SYSTEM', shortLabel: 'SYS', shortcut: 'g+s' },
+  { to: '/docker', label: 'DOCKER', shortLabel: 'DCK', shortcut: 'g+k' },
+  { to: '/comms', label: 'COMMS', shortLabel: 'COM', shortcut: 'g+c' },
+  { to: '/tasks', label: 'TASKS', shortLabel: 'TSK', shortcut: 'g+t' },
+  { to: '/logs', label: 'LOGS', shortLabel: 'LOG', shortcut: 'g+l' },
 ];
 
 export function TabBar() {
@@ -42,6 +43,9 @@ export function TabBar() {
             <>
               <span className="hidden sm:inline">{tab.label}</span>
               <span className="sm:hidden">{tab.shortLabel}</span>
+              <span className="hidden sm:inline text-[8px] font-mono text-neo-text-disabled ml-1">
+                [{tab.shortcut}]
+              </span>
               {isActive && (
                 <span className="absolute bottom-0 left-0 right-0 h-px bg-neo-red shadow-[0_0_8px_rgba(255,0,51,0.5)]" />
               )}
