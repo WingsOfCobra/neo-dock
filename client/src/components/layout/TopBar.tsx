@@ -7,6 +7,7 @@ import { useThemeStore, type Theme } from '@/stores/themeStore';
 import { useSoundStore } from '@/stores/soundStore';
 import { useSound } from '@/hooks/useSound';
 import { NotificationBell } from '@/components/ui/NotificationBell';
+import { ServerSelector } from '@/components/layout/ServerSelector';
 
 interface TopBarProps {
   wsConnected: boolean;
@@ -99,6 +100,9 @@ export function TopBar({ wsConnected, isOffline = false, onOpenSettings }: TopBa
       <span className="hidden sm:inline font-mono text-[10px] text-neo-red/30 terminal-cursor">
         root@neo-dock:~$
       </span>
+
+      {/* Server selector (only visible with multiple servers) */}
+      <ServerSelector />
 
       {/* Spacer */}
       <div className="flex-1" />

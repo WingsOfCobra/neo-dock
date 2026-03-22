@@ -12,6 +12,7 @@ import { proxyRoutes } from './routes/proxy.js';
 import { layoutRoutes } from './routes/layout.js';
 import { metricsRoutes } from './routes/metrics.js';
 import { lokiRoutes } from './routes/loki.js';
+import { serverRoutes } from './routes/servers.js';
 import { WsManager } from './ws/manager.js';
 import { startPollers } from './ws/poller.js';
 
@@ -37,6 +38,7 @@ async function main(): Promise<void> {
   await fastify.register(layoutRoutes);
   await fastify.register(metricsRoutes);
   await fastify.register(lokiRoutes);
+  await fastify.register(serverRoutes);
 
   // --- Static file serving (production only) ---
   const isDev = process.env['NODE_ENV'] !== 'production';

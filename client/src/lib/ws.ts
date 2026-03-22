@@ -42,7 +42,11 @@ export class WebSocketClient {
       this.onStateChange(true);
       // Re-send subscription after reconnect
       if (this.pendingGroups.length > 0) {
-        this.send({ type: 'subscribe', groups: this.pendingGroups });
+        const msg: Record<string, unknown> = { type: 'subscribe', groups: this.pendingGroups };
+        if (this.pendingServer) {
+          msg['server'] = this.pendingServer;
+        }
+        this.send(msg);
       }
     };
 
@@ -74,12 +78,18 @@ export class WebSocketClient {
   }
 
   /** Tell the server which topic groups we want updates for. */
-  subscribe(groups: string[]): void {
+  subscribe(groups: string[], server?: string): void {
     this.pendingGroups = groups;
-    this.send({ type: 'subscribe', groups });
+    this.pendingServer = server ?? '';
+    const msg: Record<string, unknown> = { type: 'subscribe', groups };
+    if (server) {
+      msg['server'] = server;
+    }
+    this.send(msg);
   }
 
   private pendingGroups: string[] = [];
+  private pendingServer = '';
 
   close(): void {
     this.intentionallyClosed = true;

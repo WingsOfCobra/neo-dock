@@ -25,6 +25,8 @@ const TOPIC_GROUP: Record<string, string> = {
 type TaggedWs = WebSocket & {
   isAlive: boolean;
   subscribedGroups: Set<string>;
+  /** Which chef-api server this client is viewing. Empty string = default/first server. */
+  subscribedServer: string;
 };
 
 export class WsManager {
@@ -45,13 +47,15 @@ export class WsManager {
       tagged.isAlive = true;
       // Default: subscribe to nothing until client tells us
       tagged.subscribedGroups = new Set();
+      tagged.subscribedServer = '';
       this.clients.add(tagged);
 
       ws.on('message', (raw) => {
         try {
-          const msg = JSON.parse(String(raw)) as { type?: string; groups?: string[] };
+          const msg = JSON.parse(String(raw)) as { type?: string; groups?: string[]; server?: string };
           if (msg.type === 'subscribe' && Array.isArray(msg.groups)) {
             tagged.subscribedGroups = new Set(msg.groups);
+            tagged.subscribedServer = msg.server ?? '';
           }
         } catch {
           // ignore non-JSON or malformed
@@ -103,22 +107,28 @@ export class WsManager {
   }
 
   /**
-   * Returns true if at least one connected client is subscribed to the group.
-   * Used by pollers to skip unnecessary API calls.
+   * Returns true if at least one connected client is subscribed to the group
+   * for a given server. Used by pollers to skip unnecessary API calls.
    */
-  hasSubscribers(group: string): boolean {
+  hasSubscribers(group: string, serverName?: string): boolean {
     for (const ws of this.clients) {
-      if (ws.readyState === WebSocket.OPEN && ws.subscribedGroups.has(group)) {
-        return true;
-      }
+      if (ws.readyState !== WebSocket.OPEN) continue;
+      if (!ws.subscribedGroups.has(group)) continue;
+      // If serverName is provided, only match clients viewing that server
+      if (serverName !== undefined && ws.subscribedServer !== serverName) continue;
+      return true;
     }
     return false;
   }
 
   /**
-   * Broadcast a message only to clients subscribed to the topic's group.
+   * Broadcast a message only to clients subscribed to the topic's group
+   * and viewing the specified server.
+   * @param topic  - the WS topic name (e.g. 'system:health')
+   * @param data   - payload
+   * @param serverName - which server this data came from (empty string = default)
    */
-  broadcast(topic: string, data: unknown): void {
+  broadcast(topic: string, data: unknown, serverName?: string): void {
     const group = TOPIC_GROUP[topic];
     const message = JSON.stringify({ topic, data, timestamp: Date.now() });
 
@@ -126,6 +136,8 @@ export class WsManager {
       if (ws.readyState !== WebSocket.OPEN) continue;
       // If we know the group, only send to subscribers. Unknown topics go to everyone.
       if (group && !ws.subscribedGroups.has(group)) continue;
+      // If serverName is specified, only send to clients viewing that server
+      if (serverName !== undefined && ws.subscribedServer !== serverName) continue;
       ws.send(message);
     }
   }
