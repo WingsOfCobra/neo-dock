@@ -1,6 +1,7 @@
 /* ── TabBar – horizontal tab navigation ──────────────────── */
 
 import { NavLink } from 'react-router-dom';
+import { useSound } from '@/hooks/useSound';
 
 interface TabDef {
   to: string;
@@ -19,6 +20,8 @@ const TABS: TabDef[] = [
 ];
 
 export function TabBar() {
+  const { playSound } = useSound();
+
   return (
     <nav className="relative bg-neo-bg-deep/80 border-b border-neo-red/10 flex items-stretch overflow-x-auto shrink-0 z-30">
       {/* Left decorator */}
@@ -31,6 +34,7 @@ export function TabBar() {
           key={tab.to}
           to={tab.to}
           end={tab.to === '/'}
+          onClick={() => playSound('navigate')}
           className={({ isActive }: { isActive: boolean }) =>
             `relative flex items-center px-4 py-2 font-mono text-[11px] uppercase tracking-[0.15em] transition-all duration-200 whitespace-nowrap ${
               isActive
