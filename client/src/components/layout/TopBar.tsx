@@ -7,6 +7,7 @@ import { NotificationBell } from '@/components/ui/NotificationBell';
 
 interface TopBarProps {
   wsConnected: boolean;
+  isOffline?: boolean;
 }
 
 function Clock() {
@@ -24,7 +25,7 @@ function Clock() {
   );
 }
 
-export function TopBar({ wsConnected }: TopBarProps) {
+export function TopBar({ wsConnected, isOffline = false }: TopBarProps) {
   const notificationCount = useMetricsStore(
     (s) => s.githubNotifications.length,
   );
@@ -67,19 +68,28 @@ export function TopBar({ wsConnected }: TopBarProps) {
       {/* Notification bell */}
       <NotificationBell />
 
-      {/* WS status */}
-      <div className="flex items-center gap-1.5">
-        <span
-          className={`w-1.5 h-1.5 rounded-full ${
-            wsConnected
-              ? 'bg-neo-red shadow-[0_0_6px_rgba(255,0,51,0.6)]'
-              : 'bg-neo-text-disabled animate-pulse'
-          }`}
-        />
-        <span className="text-[10px] font-mono text-neo-text-disabled uppercase hidden sm:inline">
-          {wsConnected ? 'LINKED' : 'OFFLINE'}
-        </span>
-      </div>
+      {/* Network / WS status */}
+      {isOffline ? (
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-neo-warn animate-pulse shadow-[0_0_6px_rgba(255,102,0,0.6)]" />
+          <span className="text-[10px] font-mono text-neo-warn uppercase font-bold tracking-wider">
+            [OFFLINE]
+          </span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              wsConnected
+                ? 'bg-neo-red shadow-[0_0_6px_rgba(255,0,51,0.6)]'
+                : 'bg-neo-text-disabled animate-pulse'
+            }`}
+          />
+          <span className="text-[10px] font-mono text-neo-text-disabled uppercase hidden sm:inline">
+            {wsConnected ? 'LINKED' : 'DISCONNECTED'}
+          </span>
+        </div>
+      )}
 
       {/* Clock */}
       <Clock />
