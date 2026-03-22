@@ -1,10 +1,10 @@
 /* ── DockerContainers – list, stats, actions, logs, overview ── */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
 import { post, get } from '@/lib/api';
-import type { ChefContainer } from '@/types';
+import type { ChefContainer, ChefContainerStats, ChefDockerOverview } from '@/types';
 
 const stateBadge: Record<string, string> = {
   running: 'bg-neo-red/20 text-neo-red border-neo-red/40',
@@ -22,12 +22,12 @@ const healthBadge: Record<string, string> = {
   starting: 'text-neo-text-secondary',
 };
 
-function StatBar({ value, max = 100 }: { value: number; max?: number }) {
+function StatBar({ value, max = 100, className = 'w-16' }: { value: number; max?: number; className?: string }) {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
   const color =
     pct > 80 ? 'bg-neo-red' : pct > 50 ? 'bg-neo-yellow' : 'bg-neo-red/60';
   return (
-    <div className="h-1 w-16 bg-neo-bg-deep overflow-hidden">
+    <div className={`h-1 bg-neo-bg-deep overflow-hidden ${className}`}>
       <div
         className={`h-full ${color} transition-all duration-300`}
         style={{ width: `${pct}%` }}
@@ -43,6 +43,282 @@ function formatBytes(bytes: number): string {
   const val = bytes / Math.pow(1024, i);
   return `${val.toFixed(1)} ${units[i]}`;
 }
+
+/* ── Confirm Action Inline ─────────────────────────────────── */
+
+function ConfirmButton({
+  label,
+  confirmLabel,
+  onConfirm,
+  disabled,
+  loading,
+  variant = 'danger',
+}: {
+  label: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+  variant?: 'danger' | 'neutral';
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (timerRef.current !== null) clearTimeout(timerRef.current); };
+  }, []);
+
+  const handleClick = () => {
+    if (loading || disabled) return;
+    if (!confirming) {
+      setConfirming(true);
+      timerRef.current = setTimeout(() => setConfirming(false), 3000);
+      return;
+    }
+    setConfirming(false);
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+    onConfirm();
+  };
+
+  const dangerBase = 'border-neo-red/40 text-neo-red hover:bg-neo-red/10';
+  const dangerConfirm = 'border-neo-red text-neo-bg-deep bg-neo-red hover:bg-neo-red/80';
+  const neutralBase = 'border-neo-border text-neo-text-secondary hover:text-neo-red hover:border-neo-red/40';
+
+  const cls = confirming
+    ? dangerConfirm
+    : variant === 'danger' ? dangerBase : neutralBase;
+
+  return (
+    <button
+      className={`px-2 py-1 text-[10px] font-mono uppercase border transition-colors disabled:opacity-30 ${cls}`}
+      disabled={disabled || loading}
+      onClick={handleClick}
+    >
+      {loading ? '...' : confirming ? confirmLabel : label}
+    </button>
+  );
+}
+
+/* ── Docker Overview Bar ───────────────────────────────────── */
+
+function DockerOverviewBar({
+  dockerOverview,
+  runningCount,
+  stoppedCount,
+  compact,
+}: {
+  dockerOverview: ChefDockerOverview | null;
+  runningCount: number;
+  stoppedCount: number;
+  compact: boolean;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-4 text-[10px] font-mono pb-2 border-b border-neo-border/30">
+        <span className="text-neo-red">{dockerOverview?.containers?.running ?? runningCount} running</span>
+        <span className="text-neo-text-disabled">{dockerOverview?.containers?.stopped ?? stoppedCount} stopped</span>
+        {dockerOverview?.containers?.paused ? (
+          <span className="text-neo-yellow">{dockerOverview.containers.paused} paused</span>
+        ) : null}
+        {dockerOverview?.images != null && (
+          <span className="text-neo-text-disabled">{dockerOverview.images} images</span>
+        )}
+        {dockerOverview?.volumes != null && (
+          <span className="text-neo-text-disabled">{dockerOverview.volumes} vols</span>
+        )}
+      </div>
+
+      {!compact && dockerOverview?.diskUsage && (
+        <div className="flex items-center gap-3 text-[9px] font-mono text-neo-text-disabled pb-2 border-b border-neo-border/30">
+          <span>DISK:</span>
+          {dockerOverview.diskUsage.images && <span>img {dockerOverview.diskUsage.images}</span>}
+          {dockerOverview.diskUsage.containers && <span>ctr {dockerOverview.diskUsage.containers}</span>}
+          {dockerOverview.diskUsage.volumes && <span>vol {dockerOverview.diskUsage.volumes}</span>}
+          {dockerOverview.diskUsage.buildCache && <span>cache {dockerOverview.diskUsage.buildCache}</span>}
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ── Compact Row (Dashboard) ───────────────────────────────── */
+
+function CompactRow({ c, stats }: { c: ChefContainer; stats: ChefContainerStats | undefined }) {
+  const badge = stateBadge[c.state ?? ''] ?? defaultBadge;
+  const cpuPct = stats?.cpu_percent ?? 0;
+  const memPct = stats?.memory_percent ?? 0;
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 border border-neo-border/50 hover:border-neo-red/30 transition-colors">
+      <span className={`text-[10px] uppercase font-mono px-1.5 py-0.5 border shrink-0 ${badge}`}>
+        {c.state}
+      </span>
+      <p className="text-sm text-neo-text-primary truncate flex-1 min-w-0">{c.name}</p>
+      {stats && (
+        <div className="hidden sm:flex items-center gap-3 text-[10px] font-mono text-neo-text-secondary shrink-0">
+          <div className="flex items-center gap-1">
+            <span>CPU</span>
+            <StatBar value={cpuPct} />
+            <span className="w-10 text-right">{cpuPct.toFixed(1)}%</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span>MEM</span>
+            <StatBar value={memPct} />
+            <span className="w-10 text-right">{memPct.toFixed(1)}%</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Full Card (Docker Page) ───────────────────────────────── */
+
+function ContainerCard({
+  c,
+  stats,
+  actionLoading,
+  actionError,
+  onAction,
+  expandedId,
+  onToggleLogs,
+  logs,
+  logsLoading,
+}: {
+  c: ChefContainer;
+  stats: ChefContainerStats | undefined;
+  actionLoading: string | null;
+  actionError: string | null;
+  onAction: (id: string, action: 'restart' | 'stop') => void;
+  expandedId: string | null;
+  onToggleLogs: (id: string) => void;
+  logs: string;
+  logsLoading: boolean;
+}) {
+  const badge = stateBadge[c.state ?? ''] ?? defaultBadge;
+  const cpuPct = stats?.cpu_percent ?? 0;
+  const memPct = stats?.memory_percent ?? 0;
+  const isExpanded = expandedId === c.id;
+
+  return (
+    <div className="border border-neo-border/50 hover:border-neo-red/30 transition-colors bg-neo-bg-surface/60">
+      {/* Card header */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-neo-border/30 bg-neo-bg-deep/40">
+        <span className={`text-[10px] uppercase font-mono px-1.5 py-0.5 border shrink-0 ${badge}`}>
+          {c.state}
+        </span>
+        <p className="text-sm text-neo-text-primary truncate flex-1 font-mono">{c.name}</p>
+        {c.health && (
+          <span className={`text-[9px] font-mono uppercase ${healthBadge[c.health] ?? 'text-neo-text-disabled'}`}>
+            [{c.health}]
+          </span>
+        )}
+      </div>
+
+      {/* Card body — stats & info */}
+      <div className="p-3 space-y-2.5">
+        {/* Image + uptime */}
+        <div className="flex items-center justify-between text-[10px] font-mono text-neo-text-disabled">
+          <span className="truncate">{c.image}</span>
+          {c.uptime && <span className="shrink-0 text-neo-text-secondary">{c.uptime}</span>}
+        </div>
+
+        {/* CPU + MEM bars */}
+        {stats && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-[10px] font-mono text-neo-text-secondary">
+              <span className="w-7 text-neo-text-disabled">CPU</span>
+              <StatBar value={cpuPct} className="flex-1" />
+              <span className="w-12 text-right">{cpuPct.toFixed(1)}%</span>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-mono text-neo-text-secondary">
+              <span className="w-7 text-neo-text-disabled">MEM</span>
+              <StatBar value={memPct} className="flex-1" />
+              <span className="w-12 text-right">{memPct.toFixed(1)}%</span>
+            </div>
+          </div>
+        )}
+
+        {/* Detailed memory + network */}
+        {stats && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] font-mono text-neo-text-disabled">
+            {stats.memory_usage != null && stats.memory_limit != null && (
+              <span>RAM {formatBytes(stats.memory_usage)}/{formatBytes(stats.memory_limit)}</span>
+            )}
+            {(stats.network_rx != null || stats.network_tx != null) && (
+              <span>NET ↓{formatBytes(stats.network_rx ?? 0)} ↑{formatBytes(stats.network_tx ?? 0)}</span>
+            )}
+          </div>
+        )}
+
+        {/* Ports */}
+        {c.ports && c.ports.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 text-[9px] font-mono text-neo-text-disabled">
+            <span className="text-neo-text-disabled mr-1">PORTS</span>
+            {c.ports.slice(0, 5).map((port, i) => (
+              <span key={i} className="px-1 py-0.5 border border-neo-border/40 bg-neo-bg-deep/60">{port}</span>
+            ))}
+            {c.ports.length > 5 && <span>+{c.ports.length - 5}</span>}
+          </div>
+        )}
+
+        {/* Error for this container */}
+        {actionError && actionError.includes(c.id?.slice(0, 12) ?? '___') && (
+          <div className="text-neo-red text-[10px] font-mono">[!] {actionError}</div>
+        )}
+      </div>
+
+      {/* Card footer — actions */}
+      <div className="flex items-center gap-1 px-3 py-2 border-t border-neo-border/30 bg-neo-bg-deep/30">
+        <ConfirmButton
+          label="RST"
+          confirmLabel="CONFIRM?"
+          onConfirm={() => onAction(c.id!, 'restart')}
+          disabled={actionLoading === `${c.id}-restart`}
+          loading={actionLoading === `${c.id}-restart`}
+          variant="danger"
+        />
+        <ConfirmButton
+          label="STOP"
+          confirmLabel="CONFIRM?"
+          onConfirm={() => onAction(c.id!, 'stop')}
+          disabled={c.state !== 'running' || actionLoading === `${c.id}-stop`}
+          loading={actionLoading === `${c.id}-stop`}
+          variant="danger"
+        />
+        <button
+          aria-label={`View logs for ${c.name}`}
+          className={`px-2 py-1 text-[10px] font-mono uppercase border transition-colors ${
+            isExpanded
+              ? 'border-neo-red/40 text-neo-red bg-neo-red/10'
+              : 'border-neo-border text-neo-text-secondary hover:text-neo-red hover:border-neo-red/40'
+          }`}
+          onClick={() => onToggleLogs(c.id!)}
+        >
+          LOG
+        </button>
+      </div>
+
+      {/* Logs panel */}
+      {isExpanded && (
+        <div className="border-t border-neo-border/50 bg-neo-bg-deep p-3 max-h-48 overflow-auto">
+          {logsLoading ? (
+            <div className="flex items-center gap-2 text-xs text-neo-text-disabled">
+              <div className="w-3 h-3 border border-neo-red border-t-transparent rounded-full animate-spin" />
+              Loading logs...
+            </div>
+          ) : (
+            <pre className="text-[10px] font-mono text-neo-text-secondary whitespace-pre-wrap break-all leading-relaxed">
+              {logs || 'No logs available.'}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Main Component ────────────────────────────────────────── */
 
 interface DockerContainersProps {
   compact?: boolean;
@@ -101,173 +377,70 @@ export function DockerContainers({ compact = false }: DockerContainersProps) {
 
   const safeContainers = Array.isArray(containers) ? containers : [];
   const loading = safeContainers.length === 0;
-
   const runningCount = safeContainers.filter((c) => c.state === 'running').length;
   const stoppedCount = safeContainers.filter((c) => c.state !== 'running').length;
 
+  /* ── Compact mode (dashboard widget) ── */
+  if (compact) {
+    return (
+      <Card title="Docker" loading={loading}>
+        <div className="space-y-1.5 max-h-72 overflow-y-auto">
+          {(dockerOverview || safeContainers.length > 0) && (
+            <DockerOverviewBar
+              dockerOverview={dockerOverview}
+              runningCount={runningCount}
+              stoppedCount={stoppedCount}
+              compact
+            />
+          )}
+          {safeContainers.map((c) => (
+            <CompactRow key={c.id} c={c} stats={getStats(c)} />
+          ))}
+          {safeContainers.length === 0 && !loading && (
+            <p className="text-xs text-neo-text-disabled text-center py-4 font-mono">
+              No containers found.
+            </p>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  /* ── Full mode (Docker page) — card grid ── */
   return (
     <Card title="Docker" loading={loading}>
-      <div className={`space-y-2 ${compact ? 'max-h-72 overflow-y-auto' : ''}`}>
-        {/* Docker Overview */}
+      <div className="space-y-3">
         {(dockerOverview || safeContainers.length > 0) && (
-          <div className="flex items-center gap-4 text-[10px] font-mono pb-2 border-b border-neo-border/30">
-            <span className="text-neo-red">{dockerOverview?.containers?.running ?? runningCount} running</span>
-            <span className="text-neo-text-disabled">{dockerOverview?.containers?.stopped ?? stoppedCount} stopped</span>
-            {dockerOverview?.containers?.paused ? (
-              <span className="text-neo-yellow">{dockerOverview.containers.paused} paused</span>
-            ) : null}
-            {dockerOverview?.images != null && (
-              <span className="text-neo-text-disabled">{dockerOverview.images} images</span>
-            )}
-            {dockerOverview?.volumes != null && (
-              <span className="text-neo-text-disabled">{dockerOverview.volumes} vols</span>
-            )}
-          </div>
-        )}
-
-        {/* Disk usage breakdown */}
-        {!compact && dockerOverview?.diskUsage && (
-          <div className="flex items-center gap-3 text-[9px] font-mono text-neo-text-disabled pb-2 border-b border-neo-border/30">
-            <span>DISK:</span>
-            {dockerOverview.diskUsage.images && <span>img {dockerOverview.diskUsage.images}</span>}
-            {dockerOverview.diskUsage.containers && <span>ctr {dockerOverview.diskUsage.containers}</span>}
-            {dockerOverview.diskUsage.volumes && <span>vol {dockerOverview.diskUsage.volumes}</span>}
-            {dockerOverview.diskUsage.buildCache && <span>cache {dockerOverview.diskUsage.buildCache}</span>}
-          </div>
+          <DockerOverviewBar
+            dockerOverview={dockerOverview}
+            runningCount={runningCount}
+            stoppedCount={stoppedCount}
+            compact={false}
+          />
         )}
 
         {actionError && (
-          <div className="text-neo-red text-xs font-mono mb-2">
+          <div className="text-neo-red text-xs font-mono">
             [!] {actionError}
           </div>
         )}
 
-        {safeContainers.map((c) => {
-          const stats = getStats(c);
-          const badge = stateBadge[c.state ?? ''] ?? defaultBadge;
-          const isExpanded = expandedId === c.id;
-          const cpuPct = stats?.cpu_percent ?? 0;
-          const memPct = stats?.memory_percent ?? 0;
-
-          return (
-            <div
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {safeContainers.map((c) => (
+            <ContainerCard
               key={c.id}
-              className="group border border-neo-border/50 hover:border-neo-red/30 transition-colors"
-            >
-              {/* Main row */}
-              <div className="flex items-center gap-2 px-3 py-2">
-                <span
-                  className={`text-[10px] uppercase font-mono px-1.5 py-0.5 border ${badge}`}
-                >
-                  {c.state}
-                </span>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-neo-text-primary truncate">
-                      {c.name}
-                    </p>
-                    {c.health && (
-                      <span className={`text-[9px] font-mono uppercase ${healthBadge[c.health] ?? 'text-neo-text-disabled'}`}>
-                        {c.health}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-neo-text-disabled font-mono">
-                    <span className="truncate">{c.image}</span>
-                    {c.uptime && <span className="shrink-0">· {c.uptime}</span>}
-                  </div>
-                </div>
-
-                {/* Per-container stats */}
-                {stats && (
-                  <div className="hidden sm:flex items-center gap-3 text-[10px] font-mono text-neo-text-secondary">
-                    <div className="flex items-center gap-1">
-                      <span>CPU</span>
-                      <StatBar value={cpuPct} />
-                      <span className="w-10 text-right">
-                        {cpuPct.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span>MEM</span>
-                      <StatBar value={memPct} />
-                      <span className="w-10 text-right">
-                        {memPct.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Detailed stats row (expanded view) */}
-                {!compact && stats && (
-                  <div className="hidden lg:flex items-center gap-2 text-[9px] font-mono text-neo-text-disabled">
-                    {stats.memory_usage != null && stats.memory_limit != null && (
-                      <span>{formatBytes(stats.memory_usage)}/{formatBytes(stats.memory_limit)}</span>
-                    )}
-                    {(stats.network_rx != null || stats.network_tx != null) && (
-                      <span>↓{formatBytes(stats.network_rx ?? 0)} ↑{formatBytes(stats.network_tx ?? 0)}</span>
-                    )}
-                  </div>
-                )}
-
-                {/* Ports */}
-                {!compact && c.ports && c.ports.length > 0 && (
-                  <div className="hidden xl:flex items-center gap-1 text-[9px] font-mono text-neo-text-disabled">
-                    {c.ports.slice(0, 3).map((port, i) => (
-                      <span key={i} className="px-1 border border-neo-border/40">{port}</span>
-                    ))}
-                    {c.ports.length > 3 && <span>+{c.ports.length - 3}</span>}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    aria-label={`Restart container ${c.name}`}
-                    className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-red/40 text-neo-red hover:bg-neo-red/10 transition-colors disabled:opacity-30"
-                    disabled={actionLoading === `${c.id}-restart`}
-                    onClick={() => handleAction(c.id!, 'restart')}
-                  >
-                    {actionLoading === `${c.id}-restart` ? '...' : 'RST'}
-                  </button>
-                  <button
-                    aria-label={`Stop container ${c.name}`}
-                    className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-red/40 text-neo-red hover:bg-neo-red/10 transition-colors disabled:opacity-30"
-                    disabled={
-                      c.state !== 'running' ||
-                      actionLoading === `${c.id}-stop`
-                    }
-                    onClick={() => handleAction(c.id!, 'stop')}
-                  >
-                    {actionLoading === `${c.id}-stop` ? '...' : 'STOP'}
-                  </button>
-                  <button
-                    aria-label={`View logs for ${c.name}`}
-                    className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-border text-neo-text-secondary hover:text-neo-red hover:border-neo-red/40 transition-colors"
-                    onClick={() => toggleLogs(c.id!)}
-                  >
-                    LOG
-                  </button>
-                </div>
-              </div>
-
-              {isExpanded && (
-                <div className="border-t border-neo-border/50 bg-neo-bg-deep p-3 max-h-48 overflow-auto">
-                  {logsLoading ? (
-                    <div className="flex items-center gap-2 text-xs text-neo-text-disabled">
-                      <div className="w-3 h-3 border border-neo-red border-t-transparent rounded-full animate-spin" />
-                      Loading logs...
-                    </div>
-                  ) : (
-                    <pre className="text-[10px] font-mono text-neo-text-secondary whitespace-pre-wrap break-all leading-relaxed">
-                      {logs || 'No logs available.'}
-                    </pre>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+              c={c}
+              stats={getStats(c)}
+              actionLoading={actionLoading}
+              actionError={actionError}
+              onAction={handleAction}
+              expandedId={expandedId}
+              onToggleLogs={toggleLogs}
+              logs={logs}
+              logsLoading={logsLoading}
+            />
+          ))}
+        </div>
 
         {safeContainers.length === 0 && !loading && (
           <p className="text-xs text-neo-text-disabled text-center py-4 font-mono">

@@ -13,20 +13,20 @@ export function DashboardPage() {
   return (
     <div className="p-3 space-y-3 animate-fade-in">
       {/* Row 1: System overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
         <ServerMonitor />
         <DockerContainers compact />
       </div>
 
       {/* Row 2: Services + Comms */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
         <ServicesStatus compact />
         <GitHubDashboard compact />
         <EmailInbox compact />
       </div>
 
       {/* Row 3: Tasks + Logs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
         <TodoList compact />
         <LogsViewer />
         <CronJobs compact />
