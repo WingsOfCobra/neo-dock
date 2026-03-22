@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { useAuthStore } from '@/stores/authStore';
 import { NotificationBell } from '@/components/ui/NotificationBell';
+import { ServerSelector } from '@/components/layout/ServerSelector';
 
 interface TopBarProps {
   wsConnected: boolean;
@@ -50,6 +51,9 @@ export function TopBar({ wsConnected }: TopBarProps) {
       <span className="hidden sm:inline font-mono text-[10px] text-neo-red/30 terminal-cursor">
         root@neo-dock:~$
       </span>
+
+      {/* Server selector (only visible with multiple servers) */}
+      <ServerSelector />
 
       {/* Spacer */}
       <div className="flex-1" />

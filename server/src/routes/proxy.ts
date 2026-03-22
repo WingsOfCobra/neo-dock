@@ -5,16 +5,32 @@ export async function proxyRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.all('/api/chef/*', async (request: FastifyRequest, reply: FastifyReply) => {
     const wildcardParam = (request.params as Record<string, string>)['*'];
     const targetPath = `/${wildcardParam ?? ''}`;
-    const targetUrl = new URL(targetPath, config.chefApiUrl);
 
-    // Forward query params
+    // Resolve which server to proxy to via ?server= query param
     const originalUrl = new URL(request.url, `http://${request.hostname}`);
+    const serverParam = originalUrl.searchParams.get('server');
+    let serverUrl = config.chefApiUrl;
+    let serverApiKey = config.chefApiKey;
+
+    if (serverParam) {
+      const match = config.servers.find((s) => s.name === serverParam);
+      if (match) {
+        serverUrl = match.url;
+        serverApiKey = match.apiKey;
+      }
+      // Remove the server param so it's not forwarded to chef-api
+      originalUrl.searchParams.delete('server');
+    }
+
+    const targetUrl = new URL(targetPath, serverUrl);
+
+    // Forward query params (minus 'server' which was already removed)
     for (const [key, value] of originalUrl.searchParams) {
       targetUrl.searchParams.set(key, value);
     }
 
     const headers: Record<string, string> = {
-      'X-Chef-API-Key': config.chefApiKey,
+      'X-Chef-API-Key': serverApiKey,
     };
 
     // Forward content-type if present

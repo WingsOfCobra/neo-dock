@@ -27,6 +27,12 @@ interface PollIntervals {
   cron: number;
 }
 
+export interface ChefServer {
+  name: string;
+  url: string;
+  apiKey: string;
+}
+
 export interface Config {
   port: number;
   apiKey: string;
@@ -35,6 +41,8 @@ export interface Config {
   lokiUrl: string;
   pollIntervals: PollIntervals;
   monitoredServices: string[];
+  /** Configured chef-api servers. Always has at least one entry. */
+  servers: ChefServer[];
 }
 
 function requireEnv(name: string): string {
@@ -53,11 +61,57 @@ function envInt(name: string, defaultVal: number): number {
   return parsed;
 }
 
+/**
+ * Parse CHEF_SERVERS env var into server list.
+ * Format: "name1=url1,name2=url2"
+ * Per-server API keys via CHEF_API_KEY_<NAME> (uppercase), falling back to global CHEF_API_KEY.
+ */
+function parseServers(globalApiKey: string): ChefServer[] {
+  const raw = process.env['CHEF_SERVERS'];
+  if (!raw) {
+    // Single-server fallback
+    return [{
+      name: 'default',
+      url: process.env['CHEF_API_URL'] ?? 'http://localhost:4242',
+      apiKey: globalApiKey,
+    }];
+  }
+
+  const servers: ChefServer[] = [];
+  for (const pair of raw.split(',')) {
+    const trimmed = pair.trim();
+    if (!trimmed) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx === -1) continue;
+    const name = trimmed.slice(0, eqIdx).trim();
+    const url = trimmed.slice(eqIdx + 1).trim();
+    if (!name || !url) continue;
+
+    const envKeyName = `CHEF_API_KEY_${name.toUpperCase()}`;
+    const apiKey = process.env[envKeyName] ?? globalApiKey;
+    servers.push({ name, url, apiKey });
+  }
+
+  if (servers.length === 0) {
+    // Malformed CHEF_SERVERS — fall back to single server
+    return [{
+      name: 'default',
+      url: process.env['CHEF_API_URL'] ?? 'http://localhost:4242',
+      apiKey: globalApiKey,
+    }];
+  }
+
+  return servers;
+}
+
+const globalChefApiKey = requireEnv('CHEF_API_KEY');
+const servers = parseServers(globalChefApiKey);
+
 export const config: Config = {
   port: envInt('NEO_DOCK_PORT', 3000),
   apiKey: requireEnv('NEO_DOCK_API_KEY'),
-  chefApiUrl: process.env['CHEF_API_URL'] ?? 'http://localhost:4242',
-  chefApiKey: requireEnv('CHEF_API_KEY'),
+  chefApiUrl: servers[0].url,
+  chefApiKey: servers[0].apiKey,
   lokiUrl: process.env['LOKI_URL'] ?? 'http://localhost:3100',
   pollIntervals: {
     system: envInt('POLL_SYSTEM', 2),
@@ -72,4 +126,5 @@ export const config: Config = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+  servers,
 };

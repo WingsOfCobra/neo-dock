@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, Component, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useMetricsStore } from '@/stores/metricsStore';
+import { useServerStore } from '@/stores/serverStore';
 import { WebSocketClient, type WsMessage } from '@/lib/ws';
 import { LoginGate } from '@/components/auth/LoginGate';
 import { Shell } from '@/components/layout/Shell';
@@ -295,11 +296,12 @@ function useWsConnection() {
 
 function RouteSubscriber({ wsRef }: { wsRef: React.RefObject<WebSocketClient | null> }) {
   const { pathname } = useLocation();
+  const activeServer = useServerStore((s) => s.activeServer);
 
   useEffect(() => {
     const groups = ROUTE_GROUPS[pathname] ?? ALL_GROUPS;
-    wsRef.current?.subscribe(groups);
-  }, [pathname, wsRef]);
+    wsRef.current?.subscribe(groups, activeServer || undefined);
+  }, [pathname, wsRef, activeServer]);
 
   return null;
 }
@@ -308,10 +310,18 @@ function RouteSubscriber({ wsRef }: { wsRef: React.RefObject<WebSocketClient | n
 
 export default function App() {
   const { authenticated, checking, checkAuth } = useAuthStore();
+  const fetchServers = useServerStore((s) => s.fetchServers);
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Fetch available servers once authenticated
+  useEffect(() => {
+    if (authenticated) {
+      fetchServers();
+    }
+  }, [authenticated, fetchServers]);
 
   const { connected: wsConnected, wsRef } = useWsConnection();
 
