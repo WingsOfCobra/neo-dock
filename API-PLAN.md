@@ -232,18 +232,6 @@ These are chef-api roadmap items that neo-dock will consume when ready.
 
 ---
 
-## Phase 5 — Chef-API Music Production
-
-These are chef-api roadmap items for music production tooling.
-
-| Feature | Chef-API Endpoints | Neo-Dock Widget |
-|---------|-------------------|----------------|
-| DAW Project Indexer | `/music/projects`, `/music/projects/:id` | Project browser |
-| Sample Library Search | `/music/samples/search`, `/music/samples/tags` | Sample finder |
-| BPM & Key Detection | `/music/analyze/bpm`, `/music/analyze/key` | Audio analyzer |
-
----
-
 ## Priority Summary
 
 | # | What | Effort | Blocking Neo-Dock? |
@@ -254,7 +242,6 @@ These are chef-api roadmap items for music production tooling.
 | 4 | Finance module (`/finance/*`) | Large | Yes — Phase 3 ecosystem |
 | 5 | Smart Home module (`/home/*`) | Large | Yes — Phase 3 ecosystem |
 | 6 | Fleet management (`/fleet/*`, `/ansible/*`) | Large | Phase 4 |
-| 7 | Music production (`/music/*`) | Medium | Phase 5 |
 
 ---
 

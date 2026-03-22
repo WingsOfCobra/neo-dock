@@ -1,6 +1,6 @@
 # Neo-Dock — Roadmap
 
-## Phase 1 — Core Dashboard (Complete)
+## Phase 1 — Core Dashboard ✅
 
 See [PLAN.md](PLAN.md) for full details.
 
@@ -30,18 +30,18 @@ See [PLAN.md](PLAN.md) for full details.
 
 ---
 
-## Phase 2 — Polish & Power Features
+## Phase 2 — Polish & Power Features (In Progress)
 
 - [x] **Notifications system** — in-app alerts for container stops, cron failures, high CPU (>90%), new emails with 5-min dedup
 - [x] **Keyboard shortcuts** — vim-style `g+x` sequences for tab navigation, `?` for help overlay
 - [x] **Command palette** — Ctrl+K/Cmd+K fuzzy search across pages, Docker containers, and GitHub repos
 - [x] **Widget: System Processes** — top 15 processes by CPU%, color-coded, compact mode for dashboard
+- [x] **Theme variants** — Arasaka Blue, Militech Green, NetWatch Amber sub-themes with store persistence
+- [x] **Sound effects** — procedural cyberpunk UI sounds on interactions (Web Audio API, toggle-able)
 - [ ] **Widget settings panel** — per-widget configuration (refresh rate, data filters, display mode)
-- [ ] **Theme variants** — alternate Neo Militarism sub-themes (Arasaka blue, Militech red, NetWatch green)
-- [ ] **Sound effects** — subtle cyberpunk UI sounds on interactions (toggle-able)
-- [ ] **Widget: Network Monitor** — bandwidth, latency, connected devices
-- [ ] **Multi-server support** — monitor multiple remote hosts, switch between them
-- [ ] **Data export** — export metrics history as CSV/JSON
+- [ ] **Widget: Network Monitor** — bandwidth, latency, connected devices (needs chef-api `/system/network/*` endpoints)
+- [ ] **Multi-server support** — monitor multiple remote hosts, switch between them (chef-api fleet management is ready)
+- [ ] **Data export** — export metrics history as CSV/JSON (needs chef-api `/metrics/snapshot`)
 - [ ] **Offline mode** — service worker for basic functionality when connection drops
 
 ---
@@ -86,3 +86,21 @@ See [PLAN.md](PLAN.md) for full details.
 - [ ] **Multi-user** — role-based access, shared dashboards
 - [ ] **API** — public API for external integrations
 - [ ] **Marketplace** — community widget sharing
+
+---
+
+## Chef-API Dependencies
+
+See [API-PLAN.md](API-PLAN.md) for the full contract.
+
+| Neo-Dock Feature | Chef-API Needed | Chef-API Status |
+|-----------------|----------------|----------------|
+| Network Monitor | `/system/network/connections`, `/bandwidth`, `/latency` | ❌ Not started |
+| Data Export | `/metrics`, `/metrics/snapshot` | ✅ Phase 3 merged |
+| Multi-Server | `/fleet/*` endpoints | ✅ Phase 4 merged |
+| Ansible Runner | `/ansible/*` endpoints | ✅ Phase 4 merged |
+| Secrets Viewer | `/secrets/*` endpoints | ✅ Phase 4 merged |
+| Finance Module | `/finance/*` endpoints | ❌ Not started |
+| Smart Home | `/home/*` endpoints | ❌ Not started |
+
+Last updated: 2026-03-22
