@@ -352,6 +352,65 @@ body {
   animation: typewriter 1s steps(30) forwards;
 }
 
+/* ── Compact mode ──────────────────────────────────────────── */
+.compact-mode {
+  --widget-padding: 0.5rem;
+  --widget-gap: 0.5rem;
+}
+
+/* ── Disable animations when data-no-animations is set ─────── */
+[data-no-animations] .scan-lines::after,
+[data-no-animations] .noise-overlay::before {
+  display: none;
+}
+
+[data-no-animations] .crt-flicker {
+  animation: none !important;
+}
+
+[data-no-animations] .glitch::before,
+[data-no-animations] .glitch::after {
+  animation: none !important;
+  display: none;
+}
+
+[data-no-animations] .pulse-glow {
+  animation: none !important;
+  box-shadow: none;
+}
+
+[data-no-animations] .terminal-cursor::after {
+  animation: none !important;
+}
+
+[data-no-animations] .line-sweep::after {
+  animation: none !important;
+  display: none;
+}
+
+[data-no-animations] .border-animated {
+  animation: none !important;
+}
+
+[data-no-animations] .animate-pulse {
+  animation: none !important;
+}
+
+[data-no-animations] .animate-spin {
+  animation: none !important;
+}
+
+/* ── Settings panel slide-in ──────────────────────────────── */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+
+/* ── Horizontal red line decorators ─────────────────────────── */
 /* ── Horizontal line decorators ───────────────────────────────── */
 .red-line-top::before {
   content: '';
