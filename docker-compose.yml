@@ -10,11 +10,12 @@ services:
     volumes:
       - neo-dock-data:/app/data
     networks:
-      - neo-dock
+      - solcloud
 
 volumes:
   neo-dock-data:
 
 networks:
-  neo-dock:
-    driver: bridge
+  solcloud:
+    name: solcloud
+    external: true
