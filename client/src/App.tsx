@@ -1,11 +1,12 @@
 /* ── App – Root component with routing ─────────────────────── */
 
-import { useEffect, useRef, useState, Component, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useCallback, Component, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { useServerStore } from '@/stores/serverStore';
 import { WebSocketClient, type WsMessage } from '@/lib/ws';
+import { scheduleSave, startOfflineHydration, type OfflineCacheData } from '@/lib/offlineCache';
 import { LoginGate } from '@/components/auth/LoginGate';
 import { Shell } from '@/components/layout/Shell';
 import { Background } from '@/components/three/Background';
@@ -131,17 +132,60 @@ function normalizeTodos(data: unknown): { items: TodoItem[]; total: number } {
   return { items, total: Number(obj['total'] ?? items.length) };
 }
 
+/* ── Online/offline hook ───────────────────────────────────── */
+
+function useOnlineStatus() {
+  const [online, setOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  );
+
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  return online;
+}
+
 /* ── WebSocket hook ────────────────────────────────────────── */
 
 function useWsConnection() {
   const wsRef = useRef<WebSocketClient | null>(null);
   const [connected, setConnected] = useState(false);
+  const [cacheTimestamp, setCacheTimestamp] = useState<number | null>(null);
   const store = useMetricsStore;
+
+  useEffect(() => {
+    // Start offline hydration timer
+    startOfflineHydration(() => wsRef.current?.connected ?? false).then(
+      (cached: OfflineCacheData | null) => {
+        if (cached) {
+          setCacheTimestamp(cached.timestamp);
+        }
+      },
+    );
+  }, []);
+
+  // Clear stale cache indicator when WS connects
+  useEffect(() => {
+    if (connected && cacheTimestamp !== null) {
+      setCacheTimestamp(null);
+    }
+  }, [connected, cacheTimestamp]);
 
   useEffect(() => {
     const handleMessage = (msg: WsMessage) => {
       const s = store.getState();
       const d = msg.data;
+
+      // Schedule offline cache save (debounced)
+      scheduleSave();
 
       try {
         switch (msg.topic) {
@@ -169,6 +213,9 @@ function useWsConnection() {
             break;
           case 'system:processes':
             s.setSystemProcesses(asArray(d) as Parameters<typeof s.setSystemProcesses>[0]);
+            break;
+          case 'system:network':
+            s.setNetworkInterfaces(asArray(d) as Parameters<typeof s.setNetworkInterfaces>[0]);
             break;
           case 'docker:containers': {
             const prevContainers = s.containers;
@@ -289,7 +336,7 @@ function useWsConnection() {
     };
   }, [store]);
 
-  return { connected, wsRef };
+  return { connected, wsRef, cacheTimestamp };
 }
 
 /* ── Route subscription sync ──────────────────────────────── */
@@ -323,7 +370,8 @@ export default function App() {
     }
   }, [authenticated, fetchServers]);
 
-  const { connected: wsConnected, wsRef } = useWsConnection();
+  const { connected: wsConnected, wsRef, cacheTimestamp } = useWsConnection();
+  const isOnline = useOnlineStatus();
 
   if (checking) {
     return (
@@ -355,7 +403,7 @@ export default function App() {
         </ErrorBoundary>
         <ErrorBoundary>
           <Routes>
-            <Route element={<Shell wsConnected={wsConnected} />}>
+            <Route element={<Shell wsConnected={wsConnected} isOffline={!isOnline} cacheTimestamp={cacheTimestamp} />}>
               <Route index element={<DashboardPage />} />
               <Route path="system" element={<SystemPage />} />
               <Route path="docker" element={<DockerPage />} />

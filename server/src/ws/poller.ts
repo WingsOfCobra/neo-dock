@@ -74,6 +74,13 @@ async function pollSystem(ws: WsManager, serverName: string, chefFetch: ChefFetc
   } catch (err) {
     log.error(`[${serverName}] system/processes failed`, err);
   }
+
+  try {
+    const network = await chefFetch<unknown>('/system/network');
+    ws.broadcast('system:network', Array.isArray(network) ? network : []);
+  } catch (err) {
+    log.error('system/network failed', err);
+  }
 }
 
 interface ChefContainerEntry {

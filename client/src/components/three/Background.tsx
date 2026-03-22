@@ -1,4 +1,4 @@
-/* ── Background – R3F canvas with red terminal scene ────────── */
+/* ── Background – R3F canvas with themed terminal scene ────────── */
 
 import { Suspense, useEffect, useState, useRef, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
@@ -7,6 +7,7 @@ import { GridFloor } from './GridFloor';
 import { Particles } from './Particles';
 import { Geometry } from './Geometry';
 import { Effects } from './Effects';
+import { useThemeStore, themeColors } from '@/stores/themeStore';
 
 function CameraRig() {
   const { camera } = useThree();
@@ -36,6 +37,8 @@ function CameraRig() {
 export function Background() {
   const [visible, setVisible] = useState(true);
   const [contextLost, setContextLost] = useState(false);
+  const theme = useThemeStore((s) => s.theme);
+  const colors = themeColors[theme];
 
   useEffect(() => {
     const handleVisibility = () => setVisible(!document.hidden);
@@ -82,13 +85,13 @@ export function Background() {
         }}
         onCreated={handleCreated}
       >
-        <color attach="background" args={['#0A0000']} />
-        <fog attach="fog" args={['#0A0000', 15, 45]} />
+        <color attach="background" args={[colors.bgDeep]} />
+        <fog attach="fog" args={[colors.bgDeep, 15, 45]} />
         <Suspense fallback={null}>
           <CameraRig />
-          <GridFloor />
-          <Particles />
-          <Geometry />
+          <GridFloor primary={colors.primary} primaryDim={colors.primaryDim} />
+          <Particles primary={colors.primary} primaryDim={colors.primaryDim} accent={colors.accent} />
+          <Geometry primary={colors.primary} primaryDim={colors.primaryDim} />
           <Effects />
         </Suspense>
       </Canvas>

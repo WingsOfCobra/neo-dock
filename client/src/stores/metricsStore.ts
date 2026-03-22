@@ -17,7 +17,9 @@ import type {
   ChefCronJob,
   ChefCronHealth,
   ChefService,
+  ChefNetworkInterface,
   MetricsPoint,
+  NetworkHistoryPoint,
   LokiLogEntry,
   TodoItem,
 } from '@/types';
@@ -41,6 +43,10 @@ interface MetricsState {
   systemDisk: ChefDiskInfo[];
   systemProcesses: ChefProcessInfo[];
   systemMetrics: MetricsPoint[];
+
+  /* ── Network ────────────────────────────────────────────── */
+  networkInterfaces: ChefNetworkInterface[];
+  networkHistory: NetworkHistoryPoint[];
 
   /* ── Docker ─────────────────────────────────────────────── */
   containers: ChefContainer[];
@@ -85,6 +91,7 @@ interface MetricsState {
   setSystemProcesses: (p: ChefProcessInfo[]) => void;
   pushMetricsPoint: (p: MetricsPoint) => void;
   setSystemMetrics: (m: MetricsPoint[]) => void;
+  setNetworkInterfaces: (n: ChefNetworkInterface[]) => void;
   setContainers: (c: ChefContainer[]) => void;
   setContainerStats: (id: string, s: ChefContainerStats) => void;
   setDockerOverview: (o: ChefDockerOverview) => void;
@@ -106,6 +113,7 @@ interface MetricsState {
 }
 
 const MAX_METRICS = 3600; // 1 hour at 1pt/sec
+const MAX_NETWORK_HISTORY = 300; // 5 min at 1pt/sec
 const MAX_LOKI_LOGS = 2000;
 
 export const useMetricsStore = create<MetricsState>()((set) => ({
@@ -113,6 +121,8 @@ export const useMetricsStore = create<MetricsState>()((set) => ({
   systemDisk: [],
   systemProcesses: [],
   systemMetrics: [],
+  networkInterfaces: [],
+  networkHistory: [],
   containers: [],
   containerStats: {},
   dockerOverview: null,
@@ -166,6 +176,18 @@ export const useMetricsStore = create<MetricsState>()((set) => ({
       systemMetrics: [...s.systemMetrics.slice(-MAX_METRICS + 1), p],
     })),
   setSystemMetrics: (m) => set({ systemMetrics: m }),
+  setNetworkInterfaces: (interfaces) =>
+    set((s) => {
+      const now = Date.now();
+      // Compute total rx/tx across all interfaces
+      const totalRx = interfaces.reduce((sum, i) => sum + (i.rx_bytes ?? 0), 0);
+      const totalTx = interfaces.reduce((sum, i) => sum + (i.tx_bytes ?? 0), 0);
+      const point: NetworkHistoryPoint = { timestamp: now, rx_bytes: totalRx, tx_bytes: totalTx };
+      return {
+        networkInterfaces: interfaces,
+        networkHistory: [...s.networkHistory.slice(-(MAX_NETWORK_HISTORY - 1)), point],
+      };
+    }),
   setContainers: (c) => set({ containers: c }),
   setContainerStats: (id, stats) =>
     set((s) => ({

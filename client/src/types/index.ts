@@ -11,6 +11,13 @@ export interface MetricsPoint {
   loadAvg: number[];
 }
 
+/** Network bandwidth history point */
+export interface NetworkHistoryPoint {
+  timestamp: number;
+  rx_bytes: number;
+  tx_bytes: number;
+}
+
 /** Per-container metrics time-series point */
 export interface ContainerMetricsPoint {
   timestamp: number;

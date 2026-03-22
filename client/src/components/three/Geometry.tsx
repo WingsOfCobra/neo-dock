@@ -1,4 +1,4 @@
-/* ── Geometry – wireframe polyhedra (red) ─────────────────── */
+/* ── Geometry – wireframe polyhedra (themed) ──────────────── */
 
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -45,20 +45,25 @@ function WireframeShape({
   );
 }
 
-export function Geometry() {
+interface GeometryProps {
+  primary: string;
+  primaryDim: string;
+}
+
+export function Geometry({ primary, primaryDim }: GeometryProps) {
   return (
     <>
       <WireframeShape
         position={[-12, 4, -15]}
         rotationSpeed={[0.05, 0.08, 0.02]}
-        color="#FF0033"
+        color={primary}
         size={3}
         geometry="icosahedron"
       />
       <WireframeShape
         position={[14, -2, -18]}
         rotationSpeed={[-0.03, 0.06, -0.04]}
-        color="#990020"
+        color={primaryDim}
         size={2.5}
         geometry="octahedron"
       />
