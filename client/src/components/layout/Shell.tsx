@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { TopBar } from './TopBar';
 import { TabBar } from './TabBar';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { SettingsPanel } from './SettingsPanel';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import { ShortcutsHelp } from '@/components/ui/ShortcutsHelp';
@@ -12,9 +13,11 @@ import { useSettingsStore } from '@/stores/settingsStore';
 
 interface ShellProps {
   wsConnected: boolean;
+  isOffline?: boolean;
+  cacheTimestamp?: number | null;
 }
 
-export function Shell({ wsConnected }: ShellProps) {
+export function Shell({ wsConnected, isOffline = false, cacheTimestamp = null }: ShellProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -55,8 +58,9 @@ export function Shell({ wsConnected }: ShellProps) {
   });
 
   return (
-    <div className={`relative h-screen flex flex-col z-10 ${compactMode ? 'compact-mode' : ''}`}>
-      <TopBar wsConnected={wsConnected} onOpenSettings={openSettings} />
+    <div className="relative h-screen flex flex-col z-10">
+      <TopBar wsConnected={wsConnected} isOffline={isOffline} />
+      <OfflineBanner cacheTimestamp={cacheTimestamp} />
       <TabBar />
       <main className="flex-1 overflow-y-auto">
         <Outlet />
