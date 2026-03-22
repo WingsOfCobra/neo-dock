@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
 import { Chart } from '@/components/ui/Chart';
+import { ExportButton } from '@/components/ui/ExportButton';
 import type { MetricsPoint, ChefSystemHealth } from '@/types';
 
 function formatUptime(uptimeHuman?: string, seconds?: number): string {
@@ -127,11 +128,42 @@ export function ServerMonitor() {
   const safeLoadAvg = Array.isArray(loadAvg) ? loadAvg : [];
   const network = health?.network;
 
+  const exportData = useMemo(() => {
+    const rows: Record<string, unknown>[] = [];
+    if (health) {
+      rows.push({
+        type: 'health',
+        hostname: health.hostname,
+        platform: health.platform,
+        uptime: health.uptime,
+        cpu_usage_percent: health.cpu?.usage_percent,
+        cpu_cores: health.cpu?.cores,
+        cpu_model: health.cpu?.model,
+        memory_total: health.memory?.total,
+        memory_free: health.memory?.free,
+        memory_usedPercent: health.memory?.usedPercent,
+        network_rx_bytes: health.network?.rx_bytes,
+        network_tx_bytes: health.network?.tx_bytes,
+      });
+    }
+    for (const d of safeDisk) {
+      rows.push({
+        type: 'disk',
+        mountpoint: d.mountpoint,
+        size: d.size,
+        used: d.used,
+        usePercent: d.usePercent,
+      });
+    }
+    return rows;
+  }, [health, safeDisk]);
+
   return (
     <Card
       title="System Monitor"
       status={health ? 'ok' : undefined}
       loading={health === null}
+      actions={<ExportButton data={exportData} filename="system" />}
     >
       <div className="space-y-4">
         {/* Header row: uptime + hostname */}

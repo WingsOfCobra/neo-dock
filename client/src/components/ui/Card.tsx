@@ -10,6 +10,7 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   glowColor?: 'cyan' | 'red' | 'yellow';
+  actions?: ReactNode;
 }
 
 const statusDot: Record<string, string> = {
@@ -25,6 +26,7 @@ export function Card({
   error,
   children,
   className = '',
+  actions,
 }: CardProps) {
   return (
     <div
@@ -63,6 +65,7 @@ export function Card({
             {title}
           </h3>
           <div className="flex-1" />
+          {actions && <div className="flex items-center gap-1">{actions}</div>}
           <span className="text-neo-text-disabled font-mono text-[8px]">
             [{status === 'ok' ? 'ACTIVE' : status === 'error' ? 'ERROR' : 'STANDBY'}]
           </span>

@@ -1,8 +1,9 @@
 /* ── TodoList – task list with create/toggle (db + file sources) ── */
 
-import { useState, useCallback, type FormEvent } from 'react';
+import { useState, useCallback, useMemo, type FormEvent } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
+import { ExportButton } from '@/components/ui/ExportButton';
 import { post, patch, del } from '@/lib/api';
 import type { TodoItem, ChefTodoCreated } from '@/types';
 
@@ -102,8 +103,21 @@ export function TodoList({ compact = false }: TodoListProps) {
   const incompleteFile = fileTodos.filter((t) => !t.completed);
   const completedFile = fileTodos.filter((t) => t.completed);
 
+  const exportData = useMemo(() => {
+    return todos.map((t) => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      completed: t.completed,
+      source: t.source,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+      fileSource: t.fileSource,
+    }) as Record<string, unknown>);
+  }, [todos]);
+
   return (
-    <Card title="Todo">
+    <Card title="Todo" actions={<ExportButton data={exportData} filename="todos" />}>
       <div className={`space-y-3 ${compact ? 'max-h-72 overflow-y-auto' : ''}`}>
         {/* Summary */}
         <div className="flex items-center gap-3 text-[10px] font-mono">
