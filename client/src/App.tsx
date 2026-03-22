@@ -147,6 +147,20 @@ function useWsConnection() {
           case 'system:health':
             if (d && typeof d === 'object') {
               s.setSystemHealth(d as Parameters<typeof s.setSystemHealth>[0]);
+              // Notify on high CPU
+              const health = d as Record<string, unknown>;
+              const cpu = asObj(health['cpu']);
+              if (cpu) {
+                const usage = Number(cpu['usage_percent'] ?? 0);
+                if (usage > 90) {
+                  s.addNotification({
+                    type: 'warning',
+                    title: 'High CPU',
+                    message: `CPU at ${Math.round(usage)}%`,
+                    source: 'system',
+                  });
+                }
+              }
             }
             break;
           case 'system:disk':
@@ -155,9 +169,33 @@ function useWsConnection() {
           case 'system:processes':
             s.setSystemProcesses(asArray(d) as Parameters<typeof s.setSystemProcesses>[0]);
             break;
-          case 'docker:containers':
-            s.setContainers(asArray(d) as Parameters<typeof s.setContainers>[0]);
+          case 'docker:containers': {
+            const prevContainers = s.containers;
+            const newContainers = asArray(d) as Parameters<typeof s.setContainers>[0];
+            s.setContainers(newContainers);
+            // Notify on container stops
+            if (prevContainers.length > 0) {
+              for (const c of newContainers) {
+                const state = String((c as Record<string, unknown>)['state'] ?? '').toLowerCase();
+                if (state === 'stopped' || state === 'exited') {
+                  const name = String((c as Record<string, unknown>)['name'] ?? 'unknown');
+                  const prev = prevContainers.find(
+                    (p) => (p as Record<string, unknown>)['id'] === (c as Record<string, unknown>)['id'],
+                  );
+                  const prevState = prev ? String((prev as Record<string, unknown>)['state'] ?? '').toLowerCase() : '';
+                  if (prevState === 'running') {
+                    s.addNotification({
+                      type: 'error',
+                      title: 'Container stopped',
+                      message: `${name} is down`,
+                      source: 'container',
+                    });
+                  }
+                }
+              }
+            }
             break;
+          }
           case 'docker:overview': {
             const obj = asObj(d);
             if (obj) s.setDockerOverview(obj as Parameters<typeof s.setDockerOverview>[0]);
@@ -175,14 +213,48 @@ function useWsConnection() {
           case 'email:unread': {
             const payload = asObj(d);
             if (payload) {
-              s.setEmailCount(Number(payload['count'] ?? 0));
+              const newCount = Number(payload['count'] ?? 0);
+              const prevCount = s.emailCount;
+              s.setEmailCount(newCount);
               s.setEmails(asArray(payload['messages']) as Parameters<typeof s.setEmails>[0]);
+              if (newCount > prevCount && prevCount >= 0) {
+                s.addNotification({
+                  type: 'info',
+                  title: 'New email',
+                  message: `${newCount} unread message${newCount !== 1 ? 's' : ''}`,
+                  source: 'email',
+                });
+              }
             }
             break;
           }
-          case 'cron:jobs':
-            s.setCronJobs(asArray(d) as Parameters<typeof s.setCronJobs>[0]);
+          case 'cron:jobs': {
+            const prevJobs = s.cronJobs;
+            const newJobs = asArray(d) as Parameters<typeof s.setCronJobs>[0];
+            s.setCronJobs(newJobs);
+            // Notify on cron failures
+            if (prevJobs.length > 0) {
+              for (const job of newJobs) {
+                const j = job as Record<string, unknown>;
+                if (j['last_run_status'] === 'error') {
+                  const name = String(j['name'] ?? 'unknown');
+                  const prev = prevJobs.find(
+                    (p) => (p as Record<string, unknown>)['id'] === j['id'],
+                  );
+                  const prevStatus = prev ? (prev as Record<string, unknown>)['last_run_status'] : '';
+                  if (prevStatus !== 'error') {
+                    s.addNotification({
+                      type: 'warning',
+                      title: 'Cron job failed',
+                      message: `${name} failed`,
+                      source: 'cron',
+                    });
+                  }
+                }
+              }
+            }
             break;
+          }
           case 'cron:health': {
             const obj = asObj(d);
             if (obj) s.setCronHealth(obj as Parameters<typeof s.setCronHealth>[0]);
