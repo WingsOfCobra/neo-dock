@@ -146,6 +146,27 @@ async function pollGithub(ws: WsManager): Promise<void> {
   } catch (err) {
     log.error('github/notifications failed', err);
   }
+
+  try {
+    const prs = await chefFetch('/github/prs');
+    ws.broadcast('github:prs', prs);
+  } catch (err) {
+    log.error('github/prs failed', err);
+  }
+
+  try {
+    const issues = await chefFetch('/github/issues');
+    ws.broadcast('github:issues', issues);
+  } catch (err) {
+    log.error('github/issues failed', err);
+  }
+
+  try {
+    const workflows = await chefFetch('/github/workflows');
+    ws.broadcast('github:workflows', workflows);
+  } catch (err) {
+    log.error('github/workflows failed', err);
+  }
 }
 
 async function pollEmail(ws: WsManager): Promise<void> {
