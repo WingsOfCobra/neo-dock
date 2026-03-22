@@ -81,6 +81,18 @@ export type ChefCronHealth = GetJson<'/cron/health'>;
 export type ChefServicesResponse = GetJson<'/services/status'>;
 export type ChefService = ArrayElement<NonNullable<ChefServicesResponse['services']>>;
 
+/* ── Network ────────────────────────────────────────────────── */
+
+export interface ChefNetworkInterface {
+  name?: string;
+  rx_bytes?: number;
+  tx_bytes?: number;
+  rx_packets?: number;
+  tx_packets?: number;
+  ipv4?: string | null;
+  ipv6?: string | null;
+}
+
 /* ── SSH ─────────────────────────────────────────────────────── */
 
 export type ChefSSHHost = ArrayElement<GetJson<'/ssh/hosts'>>;

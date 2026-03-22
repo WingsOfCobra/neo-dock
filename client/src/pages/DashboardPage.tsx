@@ -8,14 +8,16 @@ import { EmailInbox } from '@/components/widgets/EmailInbox';
 import { TodoList } from '@/components/widgets/TodoList';
 import { LogsViewer } from '@/components/widgets/LogsViewer';
 import { CronJobs } from '@/components/widgets/CronJobs';
+import { NetworkMonitor } from '@/components/widgets/NetworkMonitor';
 
 export function DashboardPage() {
   return (
     <div className="p-3 space-y-3 animate-fade-in">
       {/* Row 1: System overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
         <ServerMonitor />
         <DockerContainers compact />
+        <NetworkMonitor compact />
       </div>
 
       {/* Row 2: Services + Comms */}

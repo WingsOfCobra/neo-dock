@@ -169,6 +169,9 @@ function useWsConnection() {
           case 'system:processes':
             s.setSystemProcesses(asArray(d) as Parameters<typeof s.setSystemProcesses>[0]);
             break;
+          case 'system:network':
+            s.setNetworkInterfaces(asArray(d) as Parameters<typeof s.setNetworkInterfaces>[0]);
+            break;
           case 'docker:containers': {
             const prevContainers = s.containers;
             const newContainers = asArray(d) as Parameters<typeof s.setContainers>[0];
