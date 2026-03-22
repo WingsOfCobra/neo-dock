@@ -285,6 +285,10 @@ GET /github/summary
 
 ---
 
+## Type Generation
+
+Types are auto-generated from chef-api OpenAPI spec. Run `npm run generate:types` from neo-dock root after any chef-api endpoint changes.
+
 ## Sync Protocol
 
 When either side makes changes:

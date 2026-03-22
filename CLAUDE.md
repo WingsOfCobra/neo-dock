@@ -24,6 +24,21 @@ External dependency — a Fastify + SQLite orchestration API. Endpoints used by 
 - `GET /cron/jobs`, `GET /cron/history` — scheduled jobs
 Auth: `X-Chef-API-Key` header on all requests. See chef-api docs for setup.
 
+## Type Generation
+
+Chef-API response types are auto-generated from its OpenAPI spec:
+
+```bash
+npm run generate:types   # Run from neo-dock root
+```
+
+Generated file: `client/src/types/chef-api.types.ts` — DO NOT edit manually.
+
+When chef-api adds new endpoints or changes response shapes:
+1. Run `npm run generate:types` to update types
+2. Update consuming code to use new types
+3. Never manually edit `chef-api.types.ts`
+
 ## Loki Integration
 
 Logs are sourced from a local Loki instance (default `http://localhost:3100`, configurable via `LOKI_URL` env var). NOT from chef-api.

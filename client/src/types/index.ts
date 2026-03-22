@@ -1,3 +1,5 @@
+export * from "./chef-api.types";
+
 /* ── Neo-Dock shared types ─────────────────────────────────── */
 
 export interface SystemHealth {

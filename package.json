@@ -8,7 +8,8 @@
     "start": "npm run start -w server",
     "typecheck": "npm run typecheck -w client && npm run typecheck -w server",
     "install:all": "npm install -w client && npm install -w server",
-    "clean": "rm -rf node_modules client/node_modules server/node_modules"
+    "clean": "rm -rf node_modules client/node_modules server/node_modules",
+    "generate:types": "openapi-typescript http://10.13.13.1:4242/docs/json -o client/src/types/chef-api.types.ts"
   },
   "workspaces": [
     "client",
