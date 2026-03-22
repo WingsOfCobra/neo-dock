@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
 import { post, get } from '@/lib/api';
+import { useSound } from '@/hooks/useSound';
 import type { ChefContainer, ChefContainerStats, ChefDockerOverview } from '@/types';
 
 const stateBadge: Record<string, string> = {
@@ -63,6 +64,7 @@ function ConfirmButton({
 }) {
   const [confirming, setConfirming] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { playSound } = useSound();
 
   useEffect(() => {
     return () => { if (timerRef.current !== null) clearTimeout(timerRef.current); };
@@ -71,12 +73,14 @@ function ConfirmButton({
   const handleClick = () => {
     if (loading || disabled) return;
     if (!confirming) {
+      playSound('click');
       setConfirming(true);
       timerRef.current = setTimeout(() => setConfirming(false), 3000);
       return;
     }
     setConfirming(false);
     if (timerRef.current !== null) clearTimeout(timerRef.current);
+    playSound('confirm');
     onConfirm();
   };
 

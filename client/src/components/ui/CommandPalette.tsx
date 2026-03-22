@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMetricsStore } from '@/stores/metricsStore';
+import { useSound } from '@/hooks/useSound';
 
 /* ── Types ─────────────────────────────────────────────────── */
 
@@ -37,6 +38,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const containers = useMetricsStore((s) => s.containers);
   const repos = useMetricsStore((s) => s.githubRepos);
 
+  const { playSound } = useSound();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -121,10 +123,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
   const execute = useCallback(
     (item: CommandItem) => {
+      playSound('navigate');
       onClose();
       item.action();
     },
-    [onClose],
+    [onClose, playSound],
   );
 
   /* Keyboard navigation */
