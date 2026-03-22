@@ -34,11 +34,76 @@
   --font-mono: 'JetBrains Mono', monospace;
 }
 
+/* ── Theme Variants ───────────────────────────────────────────── */
+
+/* Arasaka Blue */
+[data-theme="blue"] {
+  --color-neo-bg-deep: #000A14;
+  --color-neo-bg-base: #051220;
+  --color-neo-bg-surface: #081A2A;
+  --color-neo-bg-elevated: #0C2238;
+  --color-neo-border: #153A55;
+  --color-neo-red: #0088FF;
+  --color-neo-red-dim: #004488;
+  --color-neo-red-glow: #0088FF66;
+  --color-neo-cyan: #44AAFF;
+  --color-neo-cyan-dim: #2266AA;
+  --color-neo-yellow: #FF6600;
+  --color-neo-yellow-dim: #993D00;
+  --color-neo-bright: #33AAFF;
+  --color-neo-hot: #0099FF;
+  --color-neo-text-primary: #88BBFF;
+  --color-neo-text-secondary: #4477AA;
+  --color-neo-text-disabled: #223355;
+}
+
+/* Militech Green */
+[data-theme="green"] {
+  --color-neo-bg-deep: #000A00;
+  --color-neo-bg-base: #051205;
+  --color-neo-bg-surface: #081A08;
+  --color-neo-bg-elevated: #0C220C;
+  --color-neo-border: #153A15;
+  --color-neo-red: #00FF33;
+  --color-neo-red-dim: #009920;
+  --color-neo-red-glow: #00FF3366;
+  --color-neo-cyan: #44FF44;
+  --color-neo-cyan-dim: #22AA22;
+  --color-neo-yellow: #FF6600;
+  --color-neo-yellow-dim: #993D00;
+  --color-neo-bright: #33FF33;
+  --color-neo-hot: #00FF44;
+  --color-neo-text-primary: #88FF88;
+  --color-neo-text-secondary: #44AA44;
+  --color-neo-text-disabled: #225522;
+}
+
+/* NetWatch Amber */
+[data-theme="amber"] {
+  --color-neo-bg-deep: #0A0800;
+  --color-neo-bg-base: #120E05;
+  --color-neo-bg-surface: #1A1508;
+  --color-neo-bg-elevated: #221C0C;
+  --color-neo-border: #3A3015;
+  --color-neo-red: #FFAA00;
+  --color-neo-red-dim: #996600;
+  --color-neo-red-glow: #FFAA0066;
+  --color-neo-cyan: #FFCC44;
+  --color-neo-cyan-dim: #AA8822;
+  --color-neo-yellow: #FF4400;
+  --color-neo-yellow-dim: #992900;
+  --color-neo-bright: #FFBB33;
+  --color-neo-hot: #FFBB00;
+  --color-neo-text-primary: #FFCC88;
+  --color-neo-text-secondary: #AA8844;
+  --color-neo-text-disabled: #554422;
+}
+
 body {
   margin: 0;
   padding: 0;
-  background: #0A0000;
-  color: #FF8888;
+  background: var(--color-neo-bg-deep);
+  color: var(--color-neo-text-primary);
   font-family: 'Rajdhani', sans-serif;
   overflow: hidden;
 }
@@ -54,8 +119,8 @@ body {
     0deg,
     transparent,
     transparent 2px,
-    rgba(255, 0, 51, 0.015) 2px,
-    rgba(255, 0, 51, 0.015) 4px
+    color-mix(in srgb, var(--color-neo-red) 1.5%, transparent) 2px,
+    color-mix(in srgb, var(--color-neo-red) 1.5%, transparent) 4px
   );
   animation: scanline-scroll 8s linear infinite;
 }
@@ -108,13 +173,13 @@ body {
 }
 
 .glitch::before {
-  color: #FF0033;
+  color: var(--color-neo-red);
   animation: glitch-1 2s infinite linear alternate-reverse;
   clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
 }
 
 .glitch::after {
-  color: #FF4444;
+  color: var(--color-neo-cyan);
   animation: glitch-2 3s infinite linear alternate-reverse;
   clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
 }
@@ -141,7 +206,7 @@ body {
 .terminal-cursor::after {
   content: '_';
   animation: blink-cursor 1s step-end infinite;
-  color: #FF0033;
+  color: var(--color-neo-red);
 }
 
 @keyframes blink-cursor {
@@ -155,11 +220,11 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 5px rgba(255, 0, 51, 0.2), 0 0 10px rgba(255, 0, 51, 0.1); }
-  50% { box-shadow: 0 0 15px rgba(255, 0, 51, 0.4), 0 0 30px rgba(255, 0, 51, 0.2); }
+  0%, 100% { box-shadow: 0 0 5px color-mix(in srgb, var(--color-neo-red) 20%, transparent), 0 0 10px color-mix(in srgb, var(--color-neo-red) 10%, transparent); }
+  50% { box-shadow: 0 0 15px color-mix(in srgb, var(--color-neo-red) 40%, transparent), 0 0 30px color-mix(in srgb, var(--color-neo-red) 20%, transparent); }
 }
 
-/* ── Red line sweep ─────────────────────────────────────────── */
+/* ── Line sweep ────────────────────────────────────────────── */
 .line-sweep::after {
   content: '';
   position: absolute;
@@ -167,7 +232,7 @@ body {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #FF0033, transparent);
+  background: linear-gradient(90deg, transparent, var(--color-neo-red), transparent);
   animation: line-sweep 4s ease-in-out infinite;
 }
 
@@ -185,7 +250,7 @@ body {
 }
 
 .border-animated {
-  border-image: linear-gradient(90deg, #3A1515, #FF0033, #3A1515, #FF0033, #3A1515) 1;
+  border-image: linear-gradient(90deg, var(--color-neo-border), var(--color-neo-red), var(--color-neo-border), var(--color-neo-red), var(--color-neo-border)) 1;
   border-image-slice: 1;
   animation: border-flow 3s linear infinite;
   background-size: 200% 100%;
@@ -193,8 +258,8 @@ body {
 
 /* ── Tab active indicator ───────────────────────────────────── */
 .tab-active {
-  border-bottom: 2px solid #FF0033;
-  box-shadow: 0 2px 8px rgba(255, 0, 51, 0.3);
+  border-bottom: 2px solid var(--color-neo-red);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-neo-red) 30%, transparent);
 }
 
 .tab-active::after {
@@ -204,15 +269,15 @@ body {
   left: 0;
   right: 0;
   height: 1px;
-  background: #FF0033;
-  box-shadow: 0 0 8px #FF0033;
+  background: var(--color-neo-red);
+  box-shadow: 0 0 8px var(--color-neo-red);
 }
 
-/* ── Custom scrollbar (red) ─────────────────────────────────── */
+/* ── Custom scrollbar ──────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #0A0000; }
-::-webkit-scrollbar-thumb { background: #3A1515; }
-::-webkit-scrollbar-thumb:hover { background: #FF0033; }
+::-webkit-scrollbar-track { background: var(--color-neo-bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--color-neo-border); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-neo-red); }
 
 /* ── Chamfered corner clip-path for cards ───────────────────── */
 .chamfer {
@@ -246,15 +311,15 @@ body {
   opacity: 0.8;
 }
 .react-grid-placeholder {
-  background: rgba(255, 0, 51, 0.08) !important;
-  border: 1px dashed rgba(255, 0, 51, 0.3) !important;
+  background: color-mix(in srgb, var(--color-neo-red) 8%, transparent) !important;
+  border: 1px dashed color-mix(in srgb, var(--color-neo-red) 30%, transparent) !important;
   border-radius: 0 !important;
 }
 .react-resizable-handle {
   background: none !important;
 }
 .react-resizable-handle::after {
-  border-color: #FF0033 !important;
+  border-color: var(--color-neo-red) !important;
   width: 8px !important;
   height: 8px !important;
 }
@@ -346,6 +411,7 @@ body {
 }
 
 /* ── Horizontal red line decorators ─────────────────────────── */
+/* ── Horizontal line decorators ───────────────────────────────── */
 .red-line-top::before {
   content: '';
   position: absolute;
@@ -353,7 +419,7 @@ body {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #FF0033 20%, #FF0033 80%, transparent);
+  background: linear-gradient(90deg, transparent, var(--color-neo-red) 20%, var(--color-neo-red) 80%, transparent);
 }
 
 .red-line-bottom::after {
@@ -363,5 +429,5 @@ body {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #FF003366 20%, #FF003366 80%, transparent);
+  background: linear-gradient(90deg, transparent, var(--color-neo-red-glow) 20%, var(--color-neo-red-glow) 80%, transparent);
 }

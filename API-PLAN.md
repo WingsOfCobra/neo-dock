@@ -10,76 +10,88 @@ Neo-Dock's Fastify server sits between the browser and Chef-API. It:
 1. **Polls** chef-api REST endpoints at configurable intervals
 2. **Buffers** time-series data (CPU, RAM, container stats) in a rolling window
 3. **Pushes** updates to the browser via WebSocket
+4. **Proxies** on-demand requests via `/api/chef/*` passthrough
 
 The browser never talks to chef-api directly. Neo-Dock authenticates with `X-Chef-API-Key`.
 
 ---
 
-## Existing Endpoints Neo-Dock Uses
+## Implemented Endpoints (All Working)
 
-These already work. Listed here so chef-api knows **not to break them**.
+Everything below is live in chef-api and consumed by neo-dock.
 
 ### System
-| Method | Path | Used For | Poll Interval |
-|--------|------|----------|---------------|
-| `GET` | `/system/health` | CPU, RAM, uptime, load average | 2s |
-| `GET` | `/system/disk` | Disk usage per mount | 30s |
-| `GET` | `/system/processes` | Top processes list | 10s |
-
-**Response shapes we depend on:**
-- `/system/health` → `{ status, uptime, uptimeHuman, hostname, platform, memory: { total, free, usedPercent }, loadAvg[], timestamp }`
-- `/system/disk` → `{ filesystem, size, used, available, usePercent, mountpoint }[]`
-- `/system/processes` → `{ pid, user, cpuPercent, memPercent, command }[]`
+| Method | Path | Used For | Poll / On-demand |
+|--------|------|----------|-----------------|
+| `GET` | `/system/health` | CPU, RAM, uptime, load average, network bytes | Poll 2s |
+| `GET` | `/system/disk` | Disk usage per mount | Poll 30s |
+| `GET` | `/system/processes` | Top processes by CPU% | Poll 10s |
+| `GET` | `/system/memory` | Detailed memory breakdown (total, free, buffers, cached, swap) | Available (not polled separately) |
+| `GET` | `/system/network` | Per-interface stats (rx/tx bytes, packets, IPs) | Available (not polled separately) |
 
 ### Docker
-| Method | Path | Used For | Poll Interval |
-|--------|------|----------|---------------|
-| `GET` | `/docker/containers` | Container list + status | 5s |
-| `GET` | `/docker/stats` | Overall Docker resource usage | 5s |
-| `GET` | `/docker/containers/:id/logs?lines=200` | Container log viewer (on-demand) | — |
-| `POST` | `/docker/containers/:id/restart` | Restart action | — |
-| `POST` | `/docker/containers/:id/stop` | Stop action | — |
-
-**Response shapes we depend on:**
-- `/docker/containers` → `{ id, name, image, status, state, health, uptime, ports[] }[]`
-- `/docker/stats` → `{ containers: { total, running, stopped, paused }, images, volumes, diskUsage }`
+| Method | Path | Used For | Poll / On-demand |
+|--------|------|----------|-----------------|
+| `GET` | `/docker/containers` | Container list + status + health | Poll 5s |
+| `GET` | `/docker/stats` | Overall Docker resource usage | Poll 5s |
+| `GET` | `/docker/containers/:id/stats` | Per-container CPU%, memory, network | Poll per-container |
+| `GET` | `/docker/containers/:id/logs?lines=200` | Container log viewer | On-demand |
+| `GET` | `/docker/containers/:id/inspect` | Full container detail | On-demand |
+| `POST` | `/docker/containers/:id/restart` | Restart action | On-demand |
+| `POST` | `/docker/containers/:id/stop` | Stop action | On-demand |
+| `GET` | `/docker/images` | Image list with id, tags, size, created | Available |
+| `GET` | `/docker/networks` | Network list with id, name, driver, scope | Available |
 
 ### GitHub
-| Method | Path | Used For | Poll Interval |
-|--------|------|----------|---------------|
-| `GET` | `/github/repos` | Repo list | 60s |
-| `GET` | `/github/repos/:owner/:repo/prs` | Open PRs | 60s |
-| `GET` | `/github/repos/:owner/:repo/issues` | Open issues | 60s |
-| `GET` | `/github/repos/:owner/:repo/workflows` | CI/CD status | 60s |
-| `GET` | `/github/notifications` | Unread notifications | 60s |
+| Method | Path | Used For | Poll / On-demand |
+|--------|------|----------|-----------------|
+| `GET` | `/github/repos` | Repo list | Poll 60s |
+| `GET` | `/github/prs` | Aggregated open PRs (top repos) | Poll 60s |
+| `GET` | `/github/issues` | Aggregated open issues (top repos) | Poll 60s |
+| `GET` | `/github/workflows` | Aggregated recent workflow runs | Poll 60s |
+| `GET` | `/github/notifications` | Unread notifications | Poll 60s |
+| `GET` | `/github/repos/:owner/:repo` | Repo detail (language, topics, license) | On-demand (RepoDetailPage) |
+| `GET` | `/github/repos/:owner/:repo/branches` | Branch list with protection status | On-demand (RepoDetailPage) |
+| `GET` | `/github/repos/:owner/:repo/commits` | Recent commits | On-demand (RepoDetailPage) |
+| `GET` | `/github/repos/:owner/:repo/releases` | Releases list | On-demand (RepoDetailPage) |
+| `GET` | `/github/repos/:owner/:repo/prs` | Open PRs with CI status | On-demand (RepoDetailPage) |
+| `GET` | `/github/repos/:owner/:repo/issues` | Open issues | On-demand (RepoDetailPage) |
+| `POST` | `/github/repos/:owner/:repo/issues` | Create issue | On-demand |
+| `GET` | `/github/repos/:owner/:repo/workflows` | Workflow runs for repo | On-demand (RepoDetailPage) |
 
 ### Email
-| Method | Path | Used For | Poll Interval |
-|--------|------|----------|---------------|
-| `GET` | `/email/unread` | Unread count + preview list | 30s |
-| `GET` | `/email/search?from=&subject=&since=` | Email search (on-demand) | — |
-| `GET` | `/email/thread/:uid` | Email thread view (on-demand) | — |
+| Method | Path | Used For | Poll / On-demand |
+|--------|------|----------|-----------------|
+| `GET` | `/email/unread` | Unread count + preview list | Poll 30s |
+| `GET` | `/email/search?from=&subject=&since=` | Email search | On-demand |
+| `GET` | `/email/thread/:uid` | Email thread view | On-demand |
 
 ### Todos
-| Method | Path | Used For |
-|--------|------|----------|
-| `GET` | `/todo` | Fetch all todos (db + file) |
-| `POST` | `/todo` | Create todo `{ title, description? }` |
-| `PATCH` | `/todo/:id` | Update todo `{ title?, description?, completed? }` |
+| Method | Path | Used For | Poll / On-demand |
+|--------|------|----------|-----------------|
+| `GET` | `/todo` | Fetch all todos (db + file) | Poll |
+| `POST` | `/todo` | Create todo | On-demand |
+| `PATCH` | `/todo/:id` | Update todo | On-demand |
+| `DELETE` | `/todo/:id` | Delete todo (DB only) | On-demand |
 
 ### Cron
-| Method | Path | Used For | Poll Interval |
-|--------|------|----------|---------------|
-| `GET` | `/cron/jobs` | Job list with next run | 10s |
-| `GET` | `/cron/jobs/:id/history?limit=20` | Execution history | on-demand |
-| `POST` | `/cron/jobs/:id/run` | Manual trigger | — |
+| Method | Path | Used For | Poll / On-demand |
+|--------|------|----------|-----------------|
+| `GET` | `/cron/jobs` | Job list with next run | Poll 10s |
+| `GET` | `/cron/health` | Scheduler status | Poll |
+| `GET` | `/cron/presets` | Available presets | Available |
+| `POST` | `/cron/jobs` | Create a cron job | On-demand |
+| `GET` | `/cron/jobs/:id/history?limit=20` | Execution history | On-demand |
+| `POST` | `/cron/jobs/:id/run` | Manual trigger | On-demand |
+| `DELETE` | `/cron/jobs/:id` | Remove a job | On-demand |
 
 ### Logs
-| Method | Path | Used For | Poll Interval |
-|--------|------|----------|---------------|
-| `GET` | `/logs/files` | Available log sources | 60s |
-| `GET` | `/logs/tail/:source?lines=200` | Live log tail | 2s |
-| `GET` | `/logs/search?q=&source=&limit=` | Log search (on-demand) | — |
+| Method | Path | Used For | Poll / On-demand |
+|--------|------|----------|-----------------|
+| `GET` | `/logs/files` | Available log sources | Poll 60s |
+| `GET` | `/logs/tail/:source?lines=200` | Log tail | On-demand |
+| `GET` | `/logs/search?q=&source=&limit=` | Log search | On-demand |
+| `GET` | `/logs/stats` | Index statistics | Available |
 
 ### SSH
 | Method | Path | Used For |
@@ -87,191 +99,162 @@ These already work. Listed here so chef-api knows **not to break them**.
 | `GET` | `/ssh/hosts` | Available hosts list |
 | `POST` | `/ssh/run` | Run command `{ host, command }` |
 
----
+### Services
+| Method | Path | Used For | Poll / On-demand |
+|--------|------|----------|-----------------|
+| `GET` | `/services/status` | Systemd service health | Poll |
 
-## New Endpoints Needed
+### Alerting
+| Method | Path | Used For |
+|--------|------|----------|
+| `GET` | `/alerts/rules` | List alert rules |
+| `POST` | `/alerts/rules` | Create alert rule |
+| `PATCH` | `/alerts/rules/:id` | Update/enable/disable rule |
+| `DELETE` | `/alerts/rules/:id` | Delete rule |
+| `GET` | `/alerts/events` | Recent alert events |
+| `POST` | `/alerts/rules/:id/test` | Fire test webhook |
 
-These don't exist yet. Neo-Dock needs them for full functionality.
+### Hooks
+| Method | Path | Used For |
+|--------|------|----------|
+| `POST` | `/hooks/agent-event` | Receive OpenClaw agent events (HMAC) |
+| `GET` | `/hooks/events` | List recent events |
+| `POST` | `/hooks/notify` | Send notification |
 
-### 1. Per-Container Resource Stats
-
-**Why:** `GET /docker/stats` returns global Docker stats. Neo-Dock needs CPU and memory **per container** to show resource usage next to each container in the list.
-
-**Suggested endpoint:**
-```
-GET /docker/containers/:id/stats
-```
-
-**Expected response:**
-```json
-{
-  "id": "abc123def456",
-  "name": "nginx",
-  "cpu_percent": 2.4,
-  "memory_usage": 52428800,
-  "memory_limit": 536870912,
-  "memory_percent": 9.8,
-  "network_rx": 1048576,
-  "network_tx": 524288,
-  "block_read": 0,
-  "block_write": 4096,
-  "timestamp": "2026-03-21T12:00:00Z"
-}
-```
-
-**Notes:**
-- Docker API `GET /containers/:id/stats?stream=false` returns a single snapshot — parse from there
-- Should NOT be cached (called every 5s by neo-dock poller)
-- Status: **Needed**
+### WebSocket
+| Path | Used For |
+|------|----------|
+| `WS /ws/system` | Live CPU/memory/load (2s) |
+| `WS /ws/containers` | Docker container state events |
 
 ---
 
-### 2. System Metrics with CPU Breakdown
+## Phase 2 — Neo-Dock Needs (Polish & Power Features)
 
-**Why:** `/system/health` returns `memory.usedPercent` and `loadAvg` but **no CPU usage percentage**. Neo-Dock needs actual CPU utilization for the main dashboard gauge and line chart.
+These neo-dock features need new or enhanced chef-api endpoints.
 
-**Suggested change — extend `/system/health` response:**
-```json
-{
-  "status": "ok",
-  "uptime": 86400,
-  "hostname": "server-1",
-  "cpu": {
-    "usage_percent": 23.5,
-    "cores": 8,
-    "model": "AMD Ryzen 7 5800X"
-  },
-  "memory": {
-    "total": 34359738368,
-    "free": 17179869184,
-    "used_percent": 50.0
-  },
-  "loadAvg": [1.2, 0.8, 0.6],
-  "network": {
-    "rx_bytes": 1073741824,
-    "tx_bytes": 536870912
-  },
-  "timestamp": "2026-03-21T12:00:00Z"
-}
-```
+### Network Monitor Widget
+**Neo-Dock roadmap:** Widget showing bandwidth, latency, connected devices
 
-**New fields needed:**
-- `cpu.usage_percent` — overall CPU usage (can use `os.cpus()` delta over 1s, or `/proc/stat`)
-- `cpu.cores` — core count
-- `cpu.model` — CPU model string
-- `network.rx_bytes` / `network.tx_bytes` — total network bytes since boot (from `/proc/net/dev` or `os.networkInterfaces()`)
+**What neo-dock needs from chef-api:**
+| Method | Path | Purpose | Status |
+|--------|------|---------|--------|
+| `GET` | `/system/network` | Per-interface stats (already exists) | ✅ Done |
+| `GET` | `/system/network/connections` | Active connections (ss/netstat) | ❌ Needed |
+| `GET` | `/system/network/bandwidth` | Real-time bandwidth per interface (rolling 30s window) | ❌ Needed |
+| `GET` | `/system/network/latency?hosts=` | Ping latency to specified hosts | ❌ Needed |
 
-**Notes:**
-- This is a backwards-compatible addition — existing fields stay the same
-- Status: **Needed**
+### Widget Settings / Config Persistence
+**Neo-Dock roadmap:** Per-widget configuration (refresh rate, data filters, display mode)
 
----
+**Notes:** This is entirely a neo-dock concern — no chef-api changes needed. Neo-dock stores widget config in its own layout system.
 
-### 3. Service Status Endpoint
+### Multi-Server Support
+**Neo-Dock roadmap:** Monitor multiple remote hosts, switch between them
 
-**Why:** Neo-Dock shows a "Services" widget with systemd service health. Currently the only way is `POST /ssh/run` with `systemctl is-active` per service, which is slow and requires N requests.
+**What neo-dock needs from chef-api:**
+- No new endpoints needed. Deploy chef-api on each remote host.
+- Neo-dock server manages multiple chef-api base URLs.
+- Each instance serves the same `/system/*`, `/docker/*`, `/services/*` endpoints.
+- Neo-dock handles orchestration, aggregation, and server switching.
 
-**Suggested endpoint:**
-```
-GET /services/status
-```
+### Data Export
+**Neo-Dock roadmap:** Export metrics history as CSV/JSON
 
-**Configuration:** New env var `MONITORED_SERVICES` — comma-separated list of systemd unit names.
-```env
-MONITORED_SERVICES=nginx,docker,postgresql,redis,sshd
-```
+**What neo-dock needs from chef-api:**
+| Method | Path | Purpose | Status |
+|--------|------|---------|--------|
+| `GET` | `/metrics/snapshot` | JSON snapshot of current system + container metrics | ❌ Needed |
+| `GET` | `/metrics` | Prometheus-compatible text format (optional, for Grafana) | ❌ Needed |
 
-**Expected response:**
-```json
-{
-  "services": [
-    {
-      "name": "nginx",
-      "active": true,
-      "status": "active (running)",
-      "uptime": "2d 4h",
-      "memory": "12.5M",
-      "pid": 1234
-    },
-    {
-      "name": "postgresql",
-      "active": false,
-      "status": "inactive (dead)",
-      "uptime": null,
-      "memory": null,
-      "pid": null
-    }
-  ],
-  "timestamp": "2026-03-21T12:00:00Z"
-}
-```
-
-**Implementation hint:** Single `systemctl show` call with multiple units is faster than multiple `is-active` calls:
-```bash
-systemctl show nginx docker postgresql --property=ActiveState,SubState,MainPID,MemoryCurrent,ActiveEnterTimestamp --no-pager
-```
-
-**Notes:**
-- Should work locally (not via SSH) since chef-api runs on the monitored server
-- No caching needed (neo-dock polls every 30s)
-- Status: **Needed**
+**Notes:** Already on chef-api Phase 3 roadmap as "Metrics Endpoint".
 
 ---
 
-### 4. Todo Delete
+## Phase 3 — Ecosystem Expansion
 
-**Why:** Neo-Dock todo widget needs a delete action. Currently there's no way to remove a todo — only mark complete.
+### Finance Module
+**Neo-Dock roadmap:** Portfolio tracker, expense tracking, budget dashboard, price alerts
 
-**Suggested endpoint:**
-```
-DELETE /todo/:id
-```
+**What neo-dock needs from chef-api:**
+| Method | Path | Purpose | Status |
+|--------|------|---------|--------|
+| `GET` | `/finance/portfolio` | Holdings with current prices | ❌ Future |
+| `GET` | `/finance/portfolio/history` | Historical portfolio value | ❌ Future |
+| `POST` | `/finance/portfolio` | Add/update holding | ❌ Future |
+| `GET` | `/finance/expenses` | Categorized spending | ❌ Future |
+| `POST` | `/finance/expenses` | Log expense (manual or CSV import) | ❌ Future |
+| `GET` | `/finance/budget` | Monthly budget vs actual | ❌ Future |
+| `GET` | `/finance/alerts` | Price alert rules | ❌ Future |
+| `POST` | `/finance/alerts` | Create price alert | ❌ Future |
 
-**Expected response:** `204 No Content`
+**Integration candidates:** CoinGecko API, Alpha Vantage, Yahoo Finance, Plaid API
+**Chef-api work:** New `/finance` route module, price fetching service, SQLite storage
 
-**Notes:**
-- Only works for DB todos (id < 10000). File todos are managed in the markdown file.
-- Status: **Nice-to-have** (neo-dock can work without it)
+### Smart Home Module
+**Neo-Dock roadmap:** Home Assistant integration, room layout, climate, lighting, cameras
+
+**What neo-dock needs from chef-api:**
+| Method | Path | Purpose | Status |
+|--------|------|---------|--------|
+| `GET` | `/home/devices` | Device list from Home Assistant | ❌ Future |
+| `GET` | `/home/devices/:id` | Device state/detail | ❌ Future |
+| `POST` | `/home/devices/:id/control` | Toggle/set device | ❌ Future |
+| `GET` | `/home/rooms` | Room groupings | ❌ Future |
+| `GET` | `/home/automations` | HA automations list | ❌ Future |
+| `POST` | `/home/automations/:id/toggle` | Enable/disable automation | ❌ Future |
+| `WS` | `/ws/home` | Real-time device state changes | ❌ Future |
+
+**Integration:** Home Assistant WebSocket API, MQTT, Zigbee2MQTT
+**Chef-api work:** New `/home` route module, HA WebSocket client service
+
+### Additional Widgets
+| Widget | Chef-API needed | Status |
+|--------|----------------|--------|
+| RSS/News feed | `GET /feeds`, `POST /feeds` (RSS aggregation) | ❌ Future |
+| Weather | None — neo-dock can call wttr.in/Open-Meteo directly | N/A |
+| Calendar | `GET /calendar/events` (CalDAV/Google Cal proxy) | ❌ Future |
+| Uptime monitor | `GET /uptime/targets`, `GET /uptime/status` (HTTP monitoring) | ❌ Future |
+| DNS/Pi-hole | `GET /dns/stats` (Pi-hole API proxy) | ❌ Future |
+| Media server | `GET /media/now-playing`, `GET /media/library` (Plex/Jellyfin) | ❌ Future |
 
 ---
 
-### 5. GitHub Summary Endpoint (Optional)
+## Phase 4 — Chef-API Fleet Management
 
-**Why:** Neo-Dock's GitHub widget currently needs to call 5 separate endpoints to populate one widget. A combined summary endpoint would reduce latency and simplify polling.
+These are chef-api roadmap items that neo-dock will consume when ready.
 
-**Suggested endpoint:**
-```
-GET /github/summary
-```
-
-**Expected response:**
-```json
-{
-  "repos": { "total": 42, "recent": [...top 5 by lastPush...] },
-  "pull_requests": { "open": 3, "items": [...] },
-  "issues": { "open": 7, "items": [...] },
-  "notifications": { "unread": 5, "items": [...] },
-  "workflows": { "failing": 1, "items": [...recent runs...] },
-  "timestamp": "2026-03-21T12:00:00Z"
-}
-```
-
-**Notes:**
-- Internally calls the existing services and combines results
-- Cache for 60s (same as individual endpoints)
-- Status: **Nice-to-have** (neo-dock can call endpoints individually)
+| Feature | Chef-API Endpoints | Neo-Dock Widget |
+|---------|-------------------|----------------|
+| Ansible Runner | `/ansible/playbooks`, `/ansible/jobs/:id` | Playbook dashboard + live output |
+| Fleet Management | `/fleet/servers`, `/fleet/run`, `/fleet/status` | Multi-server overview |
+| Secrets Vault | `/secrets` (Bitwarden integration) | Secrets viewer (names only) |
 
 ---
 
-## Priority Order
+## Phase 5 — Chef-API Music Production
 
-| # | What | Priority | Blocking? |
-|---|------|----------|-----------|
-| 1 | Extend `/system/health` with CPU + network | **High** | Yes — main dashboard gauge has no data without this |
-| 2 | `GET /docker/containers/:id/stats` | **High** | Yes — per-container stats needed for Docker widget |
-| 3 | `GET /services/status` | **Medium** | Partial — can workaround via SSH but slow |
-| 4 | `DELETE /todo/:id` | **Low** | No — can hide completed todos instead |
-| 5 | `GET /github/summary` | **Low** | No — individual endpoints work fine |
+These are chef-api roadmap items for music production tooling.
+
+| Feature | Chef-API Endpoints | Neo-Dock Widget |
+|---------|-------------------|----------------|
+| DAW Project Indexer | `/music/projects`, `/music/projects/:id` | Project browser |
+| Sample Library Search | `/music/samples/search`, `/music/samples/tags` | Sample finder |
+| BPM & Key Detection | `/music/analyze/bpm`, `/music/analyze/key` | Audio analyzer |
+
+---
+
+## Priority Summary
+
+| # | What | Effort | Blocking Neo-Dock? |
+|---|------|--------|-------------------|
+| 1 | Network bandwidth/connections/latency endpoints | Small | Yes — Network Monitor widget |
+| 2 | Metrics snapshot + Prometheus format | Small | Yes — Data Export feature |
+| 3 | Multi-server support | None (chef-api side) | No — neo-dock orchestrates |
+| 4 | Finance module (`/finance/*`) | Large | Yes — Phase 3 ecosystem |
+| 5 | Smart Home module (`/home/*`) | Large | Yes — Phase 3 ecosystem |
+| 6 | Fleet management (`/fleet/*`, `/ansible/*`) | Large | Phase 4 |
+| 7 | Music production (`/music/*`) | Medium | Phase 5 |
 
 ---
 
@@ -280,20 +263,23 @@ GET /github/summary
 - Neo-Dock sends `X-Chef-API-Key` header on every request
 - Neo-Dock expects JSON responses with consistent error shape: `{ error: string }`
 - Neo-Dock polls at fixed intervals — endpoints should be fast (< 500ms ideally)
-- If an endpoint returns 503 (service not configured), Neo-Dock shows a "not configured" state in the widget — this is fine
+- If an endpoint returns 503 (service not configured), Neo-Dock shows "not configured" state — this is fine
 - Neo-Dock never writes to chef-api's database directly
-
----
 
 ## Type Generation
 
-Types are auto-generated from chef-api OpenAPI spec. Run `npm run generate:types` from neo-dock root after any chef-api endpoint changes.
+Types are auto-generated from chef-api OpenAPI spec:
+```bash
+npm run generate:types   # points at http://10.13.13.1:4242/docs/json
+```
+
+Run after any chef-api endpoint changes.
 
 ## Sync Protocol
 
 When either side makes changes:
-1. Update this file's **Status** column
-2. If a response shape changes, update the **Response shapes we depend on** section
-3. If a new endpoint is added, move it from "New Endpoints Needed" to "Existing Endpoints"
+1. Update this file
+2. If a response shape changes, update the relevant section
+3. If a new endpoint is added, add it to "Implemented Endpoints"
 
-Last synced: 2026-03-21
+Last synced: 2026-03-22

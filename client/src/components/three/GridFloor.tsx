@@ -1,11 +1,16 @@
-/* ── GridFloor – scrolling wireframe grid (red terminal) ───── */
+/* ── GridFloor – scrolling wireframe grid (themed) ─────────── */
 
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Grid } from '@react-three/drei';
 import { Group } from 'three';
 
-export function GridFloor() {
+interface GridFloorProps {
+  primary: string;
+  primaryDim: string;
+}
+
+export function GridFloor({ primary, primaryDim }: GridFloorProps) {
   const groupRef = useRef<Group>(null!);
 
   useFrame((_, delta) => {
@@ -22,10 +27,10 @@ export function GridFloor() {
       <Grid
         args={[80, 80]}
         cellSize={1}
-        cellColor="#FF0033"
+        cellColor={primary}
         cellThickness={0.4}
         sectionSize={5}
-        sectionColor="#990020"
+        sectionColor={primaryDim}
         sectionThickness={0.8}
         fadeDistance={40}
         fadeStrength={1.5}
