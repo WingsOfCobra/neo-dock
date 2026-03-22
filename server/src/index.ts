@@ -11,6 +11,7 @@ import { authRoutes } from './routes/auth.js';
 import { proxyRoutes } from './routes/proxy.js';
 import { layoutRoutes } from './routes/layout.js';
 import { metricsRoutes } from './routes/metrics.js';
+import { lokiRoutes } from './routes/loki.js';
 import { WsManager } from './ws/manager.js';
 import { startPollers } from './ws/poller.js';
 
@@ -35,6 +36,7 @@ async function main(): Promise<void> {
   await fastify.register(proxyRoutes);
   await fastify.register(layoutRoutes);
   await fastify.register(metricsRoutes);
+  await fastify.register(lokiRoutes);
 
   // --- Static file serving (production only) ---
   const isDev = process.env['NODE_ENV'] !== 'production';

@@ -1,4 +1,4 @@
-/* ── Card – Neo Militarism widget wrapper ─────────────────── */
+/* ── Card – Red terminal widget wrapper ────────────────────── */
 
 import { type ReactNode } from 'react';
 
@@ -12,16 +12,10 @@ interface CardProps {
   glowColor?: 'cyan' | 'red' | 'yellow';
 }
 
-const glowMap: Record<string, string> = {
-  cyan: 'shadow-[0_0_20px_rgba(85,234,212,0.15)]',
-  red: 'shadow-[0_0_20px_rgba(197,0,60,0.15)]',
-  yellow: 'shadow-[0_0_20px_rgba(243,230,0,0.15)]',
-};
-
 const statusDot: Record<string, string> = {
-  ok: 'bg-neo-cyan',
+  ok: 'bg-neo-red shadow-[0_0_6px_rgba(255,0,51,0.6)]',
   warning: 'bg-neo-yellow',
-  error: 'bg-neo-red',
+  error: 'bg-neo-red animate-pulse',
 };
 
 export function Card({
@@ -31,16 +25,12 @@ export function Card({
   error,
   children,
   className = '',
-  glowColor,
 }: CardProps) {
-  const glow = glowColor ? glowMap[glowColor] ?? '' : '';
-
   return (
     <div
       className={`
-        relative bg-neo-bg-surface border border-neo-border
-        overflow-hidden
-        ${glow}
+        relative h-full bg-neo-bg-surface/90 border border-neo-border
+        overflow-hidden pulse-glow
         ${className}
       `.trim()}
       style={{
@@ -48,38 +38,52 @@ export function Card({
           'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
       }}
     >
-      {/* Scan-line overlay */}
+      {/* Red scan-line overlay */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        className="pointer-events-none absolute inset-0 opacity-[0.02]"
         style={{
           backgroundImage:
-            'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 4px)',
+            'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,51,0.08) 2px, rgba(255,0,51,0.08) 4px)',
         }}
       />
 
-      {/* Header */}
+      {/* Animated top border line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neo-red/50 to-transparent" />
+
+      {/* Header — terminal style */}
       {title && (
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-neo-border">
+        <div className="relative flex items-center gap-2 px-3 py-1.5 border-b border-neo-border bg-neo-bg-deep/50">
           {status && (
             <span
-              className={`inline-block w-2 h-2 rounded-full ${statusDot[status] ?? 'bg-neo-text-disabled'}`}
+              className={`inline-block w-1.5 h-1.5 rounded-full ${statusDot[status] ?? 'bg-neo-text-disabled'}`}
             />
           )}
-          <h3 className="font-display text-xs uppercase tracking-[0.15em] text-neo-text-secondary">
+          <span className="text-neo-red/40 font-mono text-[10px]">&gt;</span>
+          <h3 className="font-mono text-[10px] uppercase tracking-[0.15em] text-neo-red">
             {title}
           </h3>
+          <div className="flex-1" />
+          <span className="text-neo-text-disabled font-mono text-[8px]">
+            [{status === 'ok' ? 'ACTIVE' : status === 'error' ? 'ERROR' : 'STANDBY'}]
+          </span>
         </div>
       )}
 
       {/* Body */}
-      <div className="relative p-4">
+      <div className="relative p-3">
         {loading && (
           <div className="flex items-center justify-center py-8">
-            <div className="w-6 h-6 border-2 border-neo-cyan border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border border-neo-red border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] font-mono text-neo-red/60 animate-pulse">LOADING...</span>
+            </div>
           </div>
         )}
         {error && !loading && (
-          <div className="text-neo-red text-sm font-mono">{error}</div>
+          <div className="text-neo-red text-xs font-mono flex items-center gap-2">
+            <span className="text-neo-red animate-pulse">[!]</span>
+            {error}
+          </div>
         )}
         {!loading && !error && children}
       </div>

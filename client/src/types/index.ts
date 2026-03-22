@@ -118,3 +118,16 @@ export interface LogEntry {
   message: string;
   source?: string;
 }
+
+/** Loki log entry as received from the poller */
+export interface LokiLogEntry {
+  timestamp: string; // nanosecond timestamp
+  line: string;
+  labels: Record<string, string>;
+}
+
+/** Category derived from Loki labels */
+export interface LokiCategory {
+  label: string;
+  value: string;
+}

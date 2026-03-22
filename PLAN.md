@@ -64,30 +64,29 @@ A self-hosted, cyberpunk-themed monitoring dashboard (Neo Militarism aesthetic f
 
 ---
 
-## Design System — Neo Militarism
+## Design System — Red Terminal (Cyberpunk 2077 Access Point)
 
 ### Color Palette
 
 ```
---neo-bg-deep:      #08080C     /* deepest background */
---neo-bg-base:      #0F0F14     /* base background */
---neo-bg-surface:   #161620     /* card/widget surface */
---neo-bg-elevated:  #1C1C28     /* hover states, elevated panels */
---neo-border:       #2A2A3A     /* default borders */
+--neo-bg-deep:      #0A0000     /* deepest background — near black with red tint */
+--neo-bg-base:      #120505     /* base background */
+--neo-bg-surface:   #1A0808     /* card/widget surface */
+--neo-bg-elevated:  #220C0C     /* hover states, elevated panels */
+--neo-border:       #3A1515     /* default borders — dark red */
 
---neo-red:          #C5003C     /* primary accent — alerts, critical, power */
---neo-red-dim:      #880425     /* secondary red — backgrounds, subtle */
---neo-cyan:         #55EAD4     /* data accent — info, links, charts */
---neo-cyan-dim:     #2A7A6E     /* muted cyan */
---neo-yellow:       #F3E600     /* warning accent — sparingly */
---neo-yellow-dim:   #8A8200     /* muted yellow */
+--neo-red:          #FF0033     /* primary accent — EVERYTHING */
+--neo-red-dim:      #990020     /* secondary red — backgrounds, subtle */
+--neo-red-glow:     #FF003366   /* glow effects */
 
---neo-text-primary: #E8E8EC     /* primary text */
---neo-text-secondary: #8A8A9A  /* secondary/label text */
---neo-text-disabled: #4A4A55   /* disabled/hint text */
+--neo-cyan:         #FF4444     /* remapped to red variant (no cyan) */
+--neo-yellow:       #FF6600     /* warning accent — sparingly */
 
---neo-glow-red:     0 0 20px rgba(197, 0, 60, 0.3)
---neo-glow-cyan:    0 0 20px rgba(85, 234, 212, 0.3)
+--neo-text-primary: #FF8888     /* primary text — light red */
+--neo-text-secondary: #AA4444  /* secondary/label text */
+--neo-text-disabled: #552222   /* disabled/hint text */
+
+--neo-glow:         0 0 20px rgba(255, 0, 51, 0.3)
 ```
 
 ### Typography
@@ -101,21 +100,24 @@ A self-hosted, cyberpunk-themed monitoring dashboard (Neo Militarism aesthetic f
 
 ### UI Elements
 
-- **Cards**: `clip-path` angular/chamfered corners (not border-radius), 1px border in `--neo-border`, subtle red or cyan glow on hover
-- **Buttons**: Flat, angular, uppercase text, accent glow on hover
-- **Scan-lines**: CSS pseudo-element overlay with repeating linear-gradient (2px lines, low opacity)
-- **Noise texture**: SVG filter `feTurbulence` overlay at 3-5% opacity
-- **Status indicators**: Small bars (not dots) using red/cyan/yellow
-- **Dividers**: Gradient fade-out lines
-- **Scrollbars**: Thin, styled to match theme
+- **Cards**: `clip-path` chamfered corners, terminal-style headers with `> TITLE [STATUS]`, red pulse glow
+- **Buttons**: Flat, angular, uppercase monospace text, `[LABEL]` bracketed style
+- **Scan-lines**: Red-tinted CSS pseudo-element overlay, animated scroll
+- **CRT flicker**: Subtle opacity animation on entire viewport
+- **Glitch text**: CSS `::before`/`::after` pseudo-elements with offset clipping
+- **Noise texture**: SVG filter `feTurbulence` overlay at 6% with overlay blend
+- **Terminal cursor**: Blinking `_` after prompt text
+- **Animated borders**: Red gradient sweep on card tops
+- **Dividers**: Red gradient fade-out lines
+- **Scrollbars**: 4px thin, red-themed
 
 ### 3D Background (react-three-fiber)
 
 A layered combination for the Cyberpunk feel:
-1. **Wireframe grid floor** — infinite perspective grid scrolling forward (Tron/Militech style)
-2. **Floating particles** — sparse, slow-moving, red/cyan colored, instanced geometry
-3. **Geometric wireframe shapes** — 1-2 slowly rotating icosahedra in the distance
-4. **Post-processing** — subtle chromatic aberration, film grain, vignette
+1. **Wireframe grid floor** — infinite perspective grid scrolling forward, all-red (#FF0033 cells, #990020 sections)
+2. **Floating particles** — sparse, slow-moving, red shades only, instanced geometry
+3. **Geometric wireframe shapes** — 1-2 slowly rotating polyhedra in red shades
+4. **Post-processing** — chromatic aberration, heavy vignette (0.8 darkness), noise overlay
 
 Interactive: gentle mouse parallax on the camera (±2° max). Subtle, not distracting.
 

@@ -1,12 +1,32 @@
-/* ── App – Root component ──────────────────────────────────── */
+/* ── App – Root component with routing ─────────────────────── */
 
 import { useEffect, useRef, useState, Component, type ReactNode } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { WebSocketClient, type WsMessage } from '@/lib/ws';
 import { LoginGate } from '@/components/auth/LoginGate';
 import { Shell } from '@/components/layout/Shell';
 import { Background } from '@/components/three/Background';
+import { DashboardPage } from '@/pages/DashboardPage';
+import { SystemPage } from '@/pages/SystemPage';
+import { DockerPage } from '@/pages/DockerPage';
+import { CommsPage } from '@/pages/CommsPage';
+import { TasksPage } from '@/pages/TasksPage';
+import { LogsPage } from '@/pages/LogsPage';
+
+/* ── Route → topic group mapping ──────────────────────────── */
+
+const ALL_GROUPS = ['system', 'docker', 'services', 'github', 'email', 'cron', 'todos', 'loki'];
+
+const ROUTE_GROUPS: Record<string, string[]> = {
+  '/':       ALL_GROUPS,
+  '/system': ['system', 'services'],
+  '/docker': ['docker'],
+  '/comms':  ['github', 'email'],
+  '/tasks':  ['cron', 'todos'],
+  '/logs':   ['loki'],
+};
 
 /* ── Error Boundary ────────────────────────────────────────── */
 
@@ -41,9 +61,9 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               </p>
               <button
                 onClick={() => this.setState({ hasError: false, error: null })}
-                className="px-3 py-1.5 text-[10px] uppercase font-mono border border-neo-cyan text-neo-cyan hover:bg-neo-cyan/10 transition-colors"
+                className="px-3 py-1.5 text-[10px] uppercase font-mono border border-neo-red text-neo-red hover:bg-neo-red/10 transition-colors"
               >
-                Retry
+                [RETRY]
               </button>
             </div>
           </div>
@@ -80,9 +100,22 @@ function useWsConnection() {
               s.setSystemHealth(d as Parameters<typeof s.setSystemHealth>[0]);
             }
             break;
-          case 'system:disk':
-            s.setSystemDisk(asArray(d) as Parameters<typeof s.setSystemDisk>[0]);
+          case 'system:disk': {
+            let diskArr: unknown[];
+            if (Array.isArray(d)) {
+              diskArr = d;
+            } else if (d && typeof d === 'object') {
+              const obj = d as Record<string, unknown>;
+              diskArr = (Array.isArray(obj['disks']) ? obj['disks']
+                : Array.isArray(obj['data']) ? obj['data']
+                : Array.isArray(obj['mounts']) ? obj['mounts']
+                : []) as unknown[];
+            } else {
+              diskArr = [];
+            }
+            s.setSystemDisk(diskArr as Parameters<typeof s.setSystemDisk>[0]);
             break;
+          }
           case 'docker:containers':
             s.setContainers(asArray(d) as Parameters<typeof s.setContainers>[0]);
             break;
@@ -116,6 +149,12 @@ function useWsConnection() {
           case 'logs:tail':
             s.setLogEntries(asArray(d) as Parameters<typeof s.setLogEntries>[0]);
             break;
+          case 'loki:logs':
+            s.appendLokiLogs(asArray(d) as Parameters<typeof s.appendLokiLogs>[0]);
+            break;
+          case 'loki:labels':
+            s.setLokiLabels(asArray(d) as string[]);
+            break;
         }
       } catch (err) {
         console.error(`[ws] Failed to handle topic "${msg.topic}":`, err);
@@ -132,7 +171,20 @@ function useWsConnection() {
     };
   }, [store]);
 
-  return connected;
+  return { connected, wsRef };
+}
+
+/* ── Route subscription sync ──────────────────────────────── */
+
+function RouteSubscriber({ wsRef }: { wsRef: React.RefObject<WebSocketClient | null> }) {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const groups = ROUTE_GROUPS[pathname] ?? ALL_GROUPS;
+    wsRef.current?.subscribe(groups);
+  }, [pathname, wsRef]);
+
+  return null;
 }
 
 /* ── App ───────────────────────────────────────────────────── */
@@ -144,12 +196,17 @@ export default function App() {
     checkAuth();
   }, [checkAuth]);
 
-  const wsConnected = useWsConnection();
+  const { connected: wsConnected, wsRef } = useWsConnection();
 
   if (checking) {
     return (
       <div className="fixed inset-0 bg-neo-bg-deep flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-neo-red border-t-transparent rounded-full animate-spin" />
+        <div className="text-center">
+          <div className="w-6 h-6 border border-neo-red border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <span className="font-mono text-[10px] text-neo-red/60 animate-pulse">
+            INITIALIZING...
+          </span>
+        </div>
       </div>
     );
   }
@@ -159,17 +216,29 @@ export default function App() {
   }
 
   return (
-    <div className="scan-lines noise-overlay">
-      <ErrorBoundary
-        fallback={
-          <div className="fixed inset-0 bg-neo-bg-deep" />
-        }
-      >
-        <Background />
-      </ErrorBoundary>
-      <ErrorBoundary>
-        <Shell wsConnected={wsConnected} />
-      </ErrorBoundary>
-    </div>
+    <BrowserRouter>
+      <RouteSubscriber wsRef={wsRef} />
+      <div className="scan-lines noise-overlay crt-flicker">
+        <ErrorBoundary
+          fallback={
+            <div className="fixed inset-0 bg-neo-bg-deep" />
+          }
+        >
+          <Background />
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <Routes>
+            <Route element={<Shell wsConnected={wsConnected} />}>
+              <Route index element={<DashboardPage />} />
+              <Route path="system" element={<SystemPage />} />
+              <Route path="docker" element={<DockerPage />} />
+              <Route path="comms" element={<CommsPage />} />
+              <Route path="tasks" element={<TasksPage />} />
+              <Route path="logs" element={<LogsPage />} />
+            </Route>
+          </Routes>
+        </ErrorBoundary>
+      </div>
+    </BrowserRouter>
   );
 }

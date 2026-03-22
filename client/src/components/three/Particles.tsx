@@ -1,4 +1,4 @@
-/* ── Particles – sparse floating motes (red + cyan) ────────── */
+/* ── Particles – sparse floating motes (all red shades) ──────── */
 
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -27,14 +27,16 @@ export function Particles() {
     return arr;
   }, []);
 
-  // Assign colors once
+  // Assign colors once — all red shades
   useMemo(() => {
     const mesh = meshRef.current;
     if (!mesh) return;
-    const cyan = new THREE.Color('#55EAD4');
-    const red = new THREE.Color('#C5003C');
+    const bright = new THREE.Color('#FF0033');
+    const dim = new THREE.Color('#990020');
+    const hot = new THREE.Color('#FF4444');
     for (let i = 0; i < COUNT; i++) {
-      mesh.setColorAt(i, Math.random() > 0.3 ? cyan : red);
+      const r = Math.random();
+      mesh.setColorAt(i, r > 0.6 ? bright : r > 0.3 ? dim : hot);
     }
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -14,6 +14,7 @@ import type {
   CronJob,
   Todo,
   LogEntry,
+  LokiLogEntry,
 } from '@/types';
 
 interface MetricsState {
@@ -29,6 +30,8 @@ interface MetricsState {
   cronJobs: CronJob[];
   todos: Todo[];
   logEntries: LogEntry[];
+  lokiLogs: LokiLogEntry[];
+  lokiLabels: string[];
 
   /* Setters for WebSocket / REST hydration */
   setSystemHealth: (h: SystemHealth) => void;
@@ -44,6 +47,9 @@ interface MetricsState {
   setCronJobs: (j: CronJob[]) => void;
   setTodos: (t: Todo[]) => void;
   setLogEntries: (l: LogEntry[]) => void;
+  appendLokiLogs: (entries: LokiLogEntry[]) => void;
+  setLokiLabels: (labels: string[]) => void;
+  clearLokiLogs: () => void;
 }
 
 const MAX_METRICS = 3600; // 1 hour at 1pt/sec
@@ -61,6 +67,8 @@ export const useMetricsStore = create<MetricsState>()((set) => ({
   cronJobs: [],
   todos: [],
   logEntries: [],
+  lokiLogs: [],
+  lokiLabels: [],
 
   setSystemHealth: (h) => set({ systemHealth: h }),
   setSystemDisk: (d) => set({ systemDisk: d }),
@@ -78,4 +86,12 @@ export const useMetricsStore = create<MetricsState>()((set) => ({
   setCronJobs: (j) => set({ cronJobs: j }),
   setTodos: (t) => set({ todos: t }),
   setLogEntries: (l) => set({ logEntries: l }),
+  appendLokiLogs: (entries) =>
+    set((s) => {
+      const combined = [...s.lokiLogs, ...entries];
+      // Keep last 2000 entries to avoid memory issues
+      return { lokiLogs: combined.slice(-2000) };
+    }),
+  setLokiLabels: (labels) => set({ lokiLabels: labels }),
+  clearLokiLogs: () => set({ lokiLogs: [] }),
 }));

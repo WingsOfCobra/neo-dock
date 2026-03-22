@@ -1,35 +1,70 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server as HttpServer, IncomingMessage } from 'node:http';
-import { parse as parseCookie } from 'node:querystring';
 import { config } from '../config.js';
+
+/* ── Topic → group mapping ─────────────────────────────────── */
+
+const TOPIC_GROUP: Record<string, string> = {
+  'system:health': 'system',
+  'system:disk': 'system',
+  'docker:containers': 'docker',
+  'docker:stats': 'docker',
+  'services:status': 'services',
+  'github:repos': 'github',
+  'github:notifications': 'github',
+  'email:unread': 'email',
+  'cron:jobs': 'cron',
+  'todo:list': 'todos',
+  'loki:logs': 'loki',
+  'loki:labels': 'loki',
+};
+
+type TaggedWs = WebSocket & {
+  isAlive: boolean;
+  subscribedGroups: Set<string>;
+};
 
 export class WsManager {
   private wss: WebSocketServer;
-  private clients: Set<WebSocket> = new Set();
+  private clients: Set<TaggedWs> = new Set();
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(server: HttpServer) {
     this.wss = new WebSocketServer({ server });
 
-    this.wss.on('connection', (ws, req) => {
+    this.wss.on('connection', (ws: WebSocket, req) => {
       if (!this.authenticate(req)) {
         ws.close(4001, 'Unauthorized');
         return;
       }
 
-      this.clients.add(ws);
-      (ws as WebSocket & { isAlive: boolean }).isAlive = true;
+      const tagged = ws as TaggedWs;
+      tagged.isAlive = true;
+      // Default: subscribe to nothing until client tells us
+      tagged.subscribedGroups = new Set();
+      this.clients.add(tagged);
+
+      ws.on('message', (raw) => {
+        try {
+          const msg = JSON.parse(String(raw)) as { type?: string; groups?: string[] };
+          if (msg.type === 'subscribe' && Array.isArray(msg.groups)) {
+            tagged.subscribedGroups = new Set(msg.groups);
+          }
+        } catch {
+          // ignore non-JSON or malformed
+        }
+      });
 
       ws.on('pong', () => {
-        (ws as WebSocket & { isAlive: boolean }).isAlive = true;
+        tagged.isAlive = true;
       });
 
       ws.on('close', () => {
-        this.clients.delete(ws);
+        this.clients.delete(tagged);
       });
 
       ws.on('error', () => {
-        this.clients.delete(ws);
+        this.clients.delete(tagged);
       });
     });
 
@@ -37,12 +72,10 @@ export class WsManager {
   }
 
   private authenticate(req: IncomingMessage): boolean {
-    // Check query param
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
     const queryKey = url.searchParams.get('key');
     if (queryKey === config.apiKey) return true;
 
-    // Check cookie
     const cookieHeader = req.headers.cookie;
     if (cookieHeader) {
       const cookies = parseCookieHeader(cookieHeader);
@@ -55,29 +88,42 @@ export class WsManager {
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
       for (const ws of this.clients) {
-        const tagged = ws as WebSocket & { isAlive: boolean };
-        if (!tagged.isAlive) {
+        if (!ws.isAlive) {
           ws.terminate();
           this.clients.delete(ws);
           continue;
         }
-        tagged.isAlive = false;
+        ws.isAlive = false;
         ws.ping();
       }
     }, 30000);
   }
 
+  /**
+   * Returns true if at least one connected client is subscribed to the group.
+   * Used by pollers to skip unnecessary API calls.
+   */
+  hasSubscribers(group: string): boolean {
+    for (const ws of this.clients) {
+      if (ws.readyState === WebSocket.OPEN && ws.subscribedGroups.has(group)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Broadcast a message only to clients subscribed to the topic's group.
+   */
   broadcast(topic: string, data: unknown): void {
-    const message = JSON.stringify({
-      topic,
-      data,
-      timestamp: Date.now(),
-    });
+    const group = TOPIC_GROUP[topic];
+    const message = JSON.stringify({ topic, data, timestamp: Date.now() });
 
     for (const ws of this.clients) {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(message);
-      }
+      if (ws.readyState !== WebSocket.OPEN) continue;
+      // If we know the group, only send to subscribers. Unknown topics go to everyone.
+      if (group && !ws.subscribedGroups.has(group)) continue;
+      ws.send(message);
     }
   }
 

@@ -16,6 +16,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-grid-layout": "^1.5.0",
+    "react-router-dom": "^7.13.1",
     "recharts": "^2.15.1",
     "three": "^0.173.0",
     "uplot": "^1.6.31",

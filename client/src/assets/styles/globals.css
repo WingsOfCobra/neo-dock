@@ -1,20 +1,34 @@
 @import "tailwindcss";
 
 @theme {
-  --color-neo-bg-deep: #08080C;
-  --color-neo-bg-base: #0F0F14;
-  --color-neo-bg-surface: #161620;
-  --color-neo-bg-elevated: #1C1C28;
-  --color-neo-border: #2A2A3A;
-  --color-neo-red: #C5003C;
-  --color-neo-red-dim: #880425;
-  --color-neo-cyan: #55EAD4;
-  --color-neo-cyan-dim: #2A7A6E;
-  --color-neo-yellow: #F3E600;
-  --color-neo-yellow-dim: #8A8200;
-  --color-neo-text-primary: #E8E8EC;
-  --color-neo-text-secondary: #8A8A9A;
-  --color-neo-text-disabled: #4A4A55;
+  /* ── Red Terminal Palette ─────────────────────────────────── */
+  --color-neo-bg-deep: #0A0000;
+  --color-neo-bg-base: #120505;
+  --color-neo-bg-surface: #1A0808;
+  --color-neo-bg-elevated: #220C0C;
+  --color-neo-border: #3A1515;
+
+  /* Primary: everything red */
+  --color-neo-red: #FF0033;
+  --color-neo-red-dim: #990020;
+  --color-neo-red-glow: #FF003366;
+
+  /* Secondary accents (used sparingly) */
+  --color-neo-cyan: #FF4444;
+  --color-neo-cyan-dim: #CC2222;
+  --color-neo-yellow: #FF6600;
+  --color-neo-yellow-dim: #993D00;
+
+  /* Bright red for data highlights */
+  --color-neo-bright: #FF1A1A;
+  --color-neo-hot: #FF0044;
+
+  /* Typography */
+  --color-neo-text-primary: #FF8888;
+  --color-neo-text-secondary: #AA4444;
+  --color-neo-text-disabled: #552222;
+
+  /* Fonts */
   --font-display: 'Orbitron', sans-serif;
   --font-body: 'Rajdhani', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -23,13 +37,13 @@
 body {
   margin: 0;
   padding: 0;
-  background: #08080C;
-  color: #E8E8EC;
+  background: #0A0000;
+  color: #FF8888;
   font-family: 'Rajdhani', sans-serif;
   overflow: hidden;
 }
 
-/* Scan-line overlay */
+/* ── Scan-line overlay ──────────────────────────────────────── */
 .scan-lines::after {
   content: '';
   position: fixed;
@@ -40,29 +54,167 @@ body {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
+    rgba(255, 0, 51, 0.015) 2px,
+    rgba(255, 0, 51, 0.015) 4px
   );
+  animation: scanline-scroll 8s linear infinite;
 }
 
-/* Noise texture overlay */
+@keyframes scanline-scroll {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+/* ── Noise texture overlay ──────────────────────────────────── */
 .noise-overlay::before {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 9998;
-  opacity: 0.04;
+  opacity: 0.06;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0F0F14; }
-::-webkit-scrollbar-thumb { background: #2A2A3A; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #55EAD4; }
+/* ── CRT flicker effect ─────────────────────────────────────── */
+.crt-flicker {
+  animation: crt-flicker 0.15s infinite;
+}
 
-/* Chamfered corner clip-path for cards */
+@keyframes crt-flicker {
+  0% { opacity: 0.97; }
+  5% { opacity: 0.95; }
+  10% { opacity: 0.98; }
+  15% { opacity: 0.96; }
+  20% { opacity: 0.99; }
+  100% { opacity: 0.98; }
+}
+
+/* ── Glitch text effect ─────────────────────────────────────── */
+.glitch {
+  position: relative;
+}
+
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.glitch::before {
+  color: #FF0033;
+  animation: glitch-1 2s infinite linear alternate-reverse;
+  clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+}
+
+.glitch::after {
+  color: #FF4444;
+  animation: glitch-2 3s infinite linear alternate-reverse;
+  clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+}
+
+@keyframes glitch-1 {
+  0%, 94% { transform: translate(0); }
+  95% { transform: translate(-2px, 1px); }
+  96% { transform: translate(2px, -1px); }
+  97% { transform: translate(-1px, 2px); }
+  98% { transform: translate(1px, 1px); }
+  99% { transform: translate(-1px, -2px); }
+  100% { transform: translate(0); }
+}
+
+@keyframes glitch-2 {
+  0%, 96% { transform: translate(0); }
+  97% { transform: translate(2px, -1px); }
+  98% { transform: translate(-2px, 1px); }
+  99% { transform: translate(1px, 2px); }
+  100% { transform: translate(0); }
+}
+
+/* ── Terminal typing cursor ─────────────────────────────────── */
+.terminal-cursor::after {
+  content: '_';
+  animation: blink-cursor 1s step-end infinite;
+  color: #FF0033;
+}
+
+@keyframes blink-cursor {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* ── Pulse glow animation ───────────────────────────────────── */
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(255, 0, 51, 0.2), 0 0 10px rgba(255, 0, 51, 0.1); }
+  50% { box-shadow: 0 0 15px rgba(255, 0, 51, 0.4), 0 0 30px rgba(255, 0, 51, 0.2); }
+}
+
+/* ── Red line sweep ─────────────────────────────────────────── */
+.line-sweep::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #FF0033, transparent);
+  animation: line-sweep 4s ease-in-out infinite;
+}
+
+@keyframes line-sweep {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100cqh); opacity: 0; }
+}
+
+/* ── Data stream animation (for borders) ────────────────────── */
+@keyframes border-flow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+.border-animated {
+  border-image: linear-gradient(90deg, #3A1515, #FF0033, #3A1515, #FF0033, #3A1515) 1;
+  border-image-slice: 1;
+  animation: border-flow 3s linear infinite;
+  background-size: 200% 100%;
+}
+
+/* ── Tab active indicator ───────────────────────────────────── */
+.tab-active {
+  border-bottom: 2px solid #FF0033;
+  box-shadow: 0 2px 8px rgba(255, 0, 51, 0.3);
+}
+
+.tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #FF0033;
+  box-shadow: 0 0 8px #FF0033;
+}
+
+/* ── Custom scrollbar (red) ─────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0A0000; }
+::-webkit-scrollbar-thumb { background: #3A1515; }
+::-webkit-scrollbar-thumb:hover { background: #FF0033; }
+
+/* ── Chamfered corner clip-path for cards ───────────────────── */
 .chamfer {
   clip-path: polygon(
     12px 0%, calc(100% - 12px) 0%,
@@ -81,7 +233,7 @@ body {
   );
 }
 
-/* react-grid-layout styles */
+/* ── react-grid-layout styles ───────────────────────────────── */
 .react-grid-layout {
   position: relative;
 }
@@ -94,15 +246,64 @@ body {
   opacity: 0.8;
 }
 .react-grid-placeholder {
-  background: rgba(85, 234, 212, 0.1) !important;
-  border: 1px dashed rgba(85, 234, 212, 0.3) !important;
+  background: rgba(255, 0, 51, 0.08) !important;
+  border: 1px dashed rgba(255, 0, 51, 0.3) !important;
   border-radius: 0 !important;
 }
 .react-resizable-handle {
   background: none !important;
 }
 .react-resizable-handle::after {
-  border-color: #55EAD4 !important;
+  border-color: #FF0033 !important;
   width: 8px !important;
   height: 8px !important;
+}
+
+/* ── Fade-in animation ──────────────────────────────────────── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in-up 0.3s ease-out;
+}
+
+/* ── Boot sequence text ─────────────────────────────────────── */
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.typewriter {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typewriter 1s steps(30) forwards;
+}
+
+/* ── Horizontal red line decorators ─────────────────────────── */
+.red-line-top::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #FF0033 20%, #FF0033 80%, transparent);
+}
+
+.red-line-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #FF003366 20%, #FF003366 80%, transparent);
 }

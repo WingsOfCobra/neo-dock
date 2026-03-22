@@ -1,4 +1,4 @@
-/* ── Geometry – wireframe polyhedra in the distance ─────────── */
+/* ── Geometry – wireframe polyhedra (red) ─────────────────── */
 
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -51,14 +51,14 @@ export function Geometry() {
       <WireframeShape
         position={[-12, 4, -15]}
         rotationSpeed={[0.05, 0.08, 0.02]}
-        color="#C5003C"
+        color="#FF0033"
         size={3}
         geometry="icosahedron"
       />
       <WireframeShape
         position={[14, -2, -18]}
         rotationSpeed={[-0.03, 0.06, -0.04]}
-        color="#55EAD4"
+        color="#990020"
         size={2.5}
         geometry="octahedron"
       />

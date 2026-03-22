@@ -1,4 +1,4 @@
-/* ── GridFloor – scrolling wireframe grid (Tron / Militech) ── */
+/* ── GridFloor – scrolling wireframe grid (red terminal) ───── */
 
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -22,10 +22,10 @@ export function GridFloor() {
       <Grid
         args={[80, 80]}
         cellSize={1}
-        cellColor="#C5003C"
+        cellColor="#FF0033"
         cellThickness={0.4}
         sectionSize={5}
-        sectionColor="#55EAD4"
+        sectionColor="#990020"
         sectionThickness={0.8}
         fadeDistance={40}
         fadeStrength={1.5}

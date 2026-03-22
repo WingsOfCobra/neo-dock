@@ -22,27 +22,58 @@ External dependency — a Fastify + SQLite orchestration API. Endpoints used by 
 - `GET /email/unread`, `/search`, `/thread/:id` — IMAP email
 - `GET /todo`, `POST /todo`, `PATCH /todo/:id` — task management
 - `GET /cron/jobs`, `GET /cron/history` — scheduled jobs
-- `GET /logs/tail/:source`, `GET /logs/search` — log aggregation
-
 Auth: `X-Chef-API-Key` header on all requests. See chef-api docs for setup.
+
+## Loki Integration
+
+Logs are sourced from a local Loki instance (default `http://localhost:3100`, configurable via `LOKI_URL` env var). NOT from chef-api.
+
+Server routes (proxied through neo-dock server):
+- `GET /api/loki/labels` — all label names (for category selectors)
+- `GET /api/loki/label/:name/values` — values for a specific label
+- `GET /api/loki/query_range` — LogQL range query (query, start, end, limit, direction)
+- `GET /api/loki/query` — instant query (latest logs)
+
+Real-time: Server polls Loki every 2s, broadcasts new entries via WebSocket (`loki:logs`, `loki:labels` topics).
+
+Client features:
+- Category filtering by any Loki label (job, container_name, unit, etc.)
+- Log level detection (from labels or line content: error/warn/info/debug)
+- Live tail mode with auto-scroll (toggleable pause)
+- Historical query mode with manual refresh
+- Full-screen view on `/logs` page
 
 ## Design System
 
-Neo Militarism aesthetic:
-- Near-black backgrounds (#08080C to #161620)
-- Red primary accent (#C5003C) — power, alerts
-- Cyan data accent (#55EAD4) — info, links
-- Yellow warning (#F3E600) — sparingly
-- Fonts: Orbitron (headers), Rajdhani (body), JetBrains Mono (data)
+Cyberpunk 2077 Red Terminal aesthetic — like an in-game access point terminal:
+- Dark red-black backgrounds (#0A0000 to #1A0808)
+- Everything red: primary (#FF0033), dim (#990020), text (#FF8888), secondary text (#AA4444)
+- Yellow (#FF6600) used sparingly for warnings only
+- Fonts: Orbitron (headers), Rajdhani (body), JetBrains Mono (data/terminal)
 - Angular/chamfered corners (clip-path, not border-radius)
-- Scan-line and noise texture overlays
-- 3D background: wireframe grid + particles + geometry (react-three-fiber)
+- CRT effects: scan-line overlay, noise texture, flicker animation, glitch text
+- Terminal-style UI: `> prompts`, `[STATUS]` badges, blinking cursors, monospace everywhere
+- Red pulse glow on cards, animated gradient border lines
+- 3D background: all-red wireframe grid + red particles + red geometry (react-three-fiber)
+- Post-processing: chromatic aberration, heavy vignette, noise
+
+## Navigation
+
+Tab-based routing (react-router-dom):
+- **Dashboard** (`/`) — overview grid with all widgets
+- **System** (`/system`) — server monitor + services
+- **Docker** (`/docker`) — container management
+- **Comms** (`/comms`) — GitHub + Email
+- **Tasks** (`/tasks`) — Todo + Cron jobs
+- **Logs** (`/logs`) — full-screen log viewer
 
 ## Key Files
 
 - `PLAN.md` — implementation plan with architecture, design system, and phases
 - `API-PLAN.md` — contract between neo-dock and chef-api: every endpoint consumed, response shapes, and new endpoints needed. Give this to the chef-api agent when syncing
 - `ROADMAP.md` — feature roadmap including future Finance and Smart Home modules
+- `client/src/pages/` — route page components (DashboardPage, SystemPage, etc.)
+- `client/src/components/layout/TabBar.tsx` — horizontal tab navigation
 - `client/` — Vite + React frontend
 - `server/` — Fastify backend
 
@@ -53,7 +84,8 @@ Neo Militarism aesthetic:
 - Zustand for state management
 - All chef-api calls go through the neo-dock server (never directly from browser)
 - Widget data types mirror chef-api response shapes
-- Responsive: desktop → iPad → phone (react-grid-layout breakpoints)
+- react-router-dom for tab-based page navigation
+- Responsive: CSS grid layouts per page (no react-grid-layout on dashboard — replaced with static grid)
 
 ## Repo Hygiene
 

@@ -40,6 +40,10 @@ export class WebSocketClient {
     this.ws.onopen = () => {
       this.reconnectAttempt = 0;
       this.onStateChange(true);
+      // Re-send subscription after reconnect
+      if (this.pendingGroups.length > 0) {
+        this.send({ type: 'subscribe', groups: this.pendingGroups });
+      }
     };
 
     this.ws.onmessage = (event: MessageEvent) => {
@@ -68,6 +72,14 @@ export class WebSocketClient {
       this.ws.send(JSON.stringify(data));
     }
   }
+
+  /** Tell the server which topic groups we want updates for. */
+  subscribe(groups: string[]): void {
+    this.pendingGroups = groups;
+    this.send({ type: 'subscribe', groups });
+  }
+
+  private pendingGroups: string[] = [];
 
   close(): void {
     this.intentionallyClosed = true;

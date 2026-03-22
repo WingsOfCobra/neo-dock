@@ -1,4 +1,4 @@
-/* ── TopBar – status bar with clock, WS status, notifications ── */
+/* ── TopBar – terminal-style status bar ───────────────────── */
 
 import { useEffect, useState } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
@@ -6,8 +6,6 @@ import { useAuthStore } from '@/stores/authStore';
 
 interface TopBarProps {
   wsConnected: boolean;
-  onToggleSidebar: () => void;
-  sidebarOpen: boolean;
 }
 
 function Clock() {
@@ -19,13 +17,13 @@ function Clock() {
   }, []);
 
   return (
-    <span className="font-mono text-sm text-neo-text-secondary tabular-nums">
+    <span className="font-mono text-[11px] text-neo-red tabular-nums">
       {time.toLocaleTimeString('en-GB', { hour12: false })}
     </span>
   );
 }
 
-export function TopBar({ wsConnected, onToggleSidebar, sidebarOpen }: TopBarProps) {
+export function TopBar({ wsConnected }: TopBarProps) {
   const notificationCount = useMetricsStore(
     (s) => s.githubNotifications.filter((n) => n.unread).length,
   );
@@ -35,26 +33,22 @@ export function TopBar({ wsConnected, onToggleSidebar, sidebarOpen }: TopBarProp
   const totalAlerts = notificationCount + emailCount;
 
   return (
-    <header className="h-10 bg-neo-bg-surface/80 backdrop-blur border-b border-neo-border flex items-center px-4 gap-4 shrink-0 z-40">
-      {/* Hamburger (mobile) */}
-      <button
-        onClick={onToggleSidebar}
-        className="lg:hidden text-neo-text-secondary hover:text-neo-text-primary transition-colors"
-        aria-label="Toggle sidebar"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          {sidebarOpen ? (
-            <path d="M18 6L6 18M6 6l12 12" />
-          ) : (
-            <path d="M3 12h18M3 6h18M3 18h18" />
-          )}
-        </svg>
-      </button>
+    <header className="relative h-10 bg-neo-bg-deep/90 backdrop-blur border-b border-neo-red/20 flex items-center px-4 gap-4 shrink-0 z-40">
+      {/* Animated top line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neo-red/60 to-transparent" />
 
-      {/* Title */}
-      <h1 className="font-display text-sm tracking-[0.2em] text-neo-red">
+      {/* Title — glitch style */}
+      <h1
+        className="glitch font-display text-sm tracking-[0.3em] text-neo-red"
+        data-text="NEO-DOCK"
+      >
         NEO-DOCK
       </h1>
+
+      {/* Terminal prompt */}
+      <span className="hidden sm:inline font-mono text-[10px] text-neo-red/30 terminal-cursor">
+        root@neo-dock:~$
+      </span>
 
       {/* Spacer */}
       <div className="flex-1" />
@@ -62,9 +56,9 @@ export function TopBar({ wsConnected, onToggleSidebar, sidebarOpen }: TopBarProp
       {/* Notification badge */}
       {totalAlerts > 0 && (
         <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-neo-cyan animate-pulse" />
-          <span className="text-[10px] font-mono text-neo-cyan">
-            {totalAlerts}
+          <span className="w-1.5 h-1.5 rounded-full bg-neo-red animate-pulse shadow-[0_0_6px_rgba(255,0,51,0.6)]" />
+          <span className="text-[10px] font-mono text-neo-red">
+            {totalAlerts} ALERT{totalAlerts !== 1 ? 'S' : ''}
           </span>
         </div>
       )}
@@ -73,11 +67,13 @@ export function TopBar({ wsConnected, onToggleSidebar, sidebarOpen }: TopBarProp
       <div className="flex items-center gap-1.5">
         <span
           className={`w-1.5 h-1.5 rounded-full ${
-            wsConnected ? 'bg-neo-cyan' : 'bg-neo-red animate-pulse'
+            wsConnected
+              ? 'bg-neo-red shadow-[0_0_6px_rgba(255,0,51,0.6)]'
+              : 'bg-neo-text-disabled animate-pulse'
           }`}
         />
         <span className="text-[10px] font-mono text-neo-text-disabled uppercase hidden sm:inline">
-          {wsConnected ? 'Live' : 'Offline'}
+          {wsConnected ? 'LINKED' : 'OFFLINE'}
         </span>
       </div>
 
@@ -89,7 +85,7 @@ export function TopBar({ wsConnected, onToggleSidebar, sidebarOpen }: TopBarProp
         onClick={logout}
         className="text-[10px] font-mono uppercase text-neo-text-disabled hover:text-neo-red transition-colors tracking-wide"
       >
-        Exit
+        [EXIT]
       </button>
     </header>
   );

@@ -1,4 +1,4 @@
-/* ── Background – R3F canvas with cyberpunk scene ──────────── */
+/* ── Background – R3F canvas with red terminal scene ────────── */
 
 import { Suspense, useEffect, useState, useRef, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
@@ -23,7 +23,7 @@ function CameraRig() {
   }, []);
 
   useFrame(() => {
-    const maxAngle = 0.035; // ~2 degrees
+    const maxAngle = 0.035;
     target.current.x += (mouse.current.x * maxAngle - target.current.x) * 0.05;
     target.current.y += (-mouse.current.y * maxAngle - target.current.y) * 0.05;
     camera.rotation.y = target.current.x;
@@ -64,7 +64,6 @@ export function Background() {
     };
   }, []);
 
-  // If WebGL context is lost, show plain background
   if (contextLost) {
     return <div className="fixed inset-0 -z-10 bg-neo-bg-deep" />;
   }
@@ -83,8 +82,8 @@ export function Background() {
         }}
         onCreated={handleCreated}
       >
-        <color attach="background" args={['#08080C']} />
-        <fog attach="fog" args={['#08080C', 15, 45]} />
+        <color attach="background" args={['#0A0000']} />
+        <fog attach="fog" args={['#0A0000', 15, 45]} />
         <Suspense fallback={null}>
           <CameraRig />
           <GridFloor />

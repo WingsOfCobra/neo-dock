@@ -32,6 +32,7 @@ export interface Config {
   apiKey: string;
   chefApiUrl: string;
   chefApiKey: string;
+  lokiUrl: string;
   pollIntervals: PollIntervals;
   monitoredServices: string[];
 }
@@ -57,6 +58,7 @@ export const config: Config = {
   apiKey: requireEnv('NEO_DOCK_API_KEY'),
   chefApiUrl: process.env['CHEF_API_URL'] ?? 'http://localhost:4242',
   chefApiKey: requireEnv('CHEF_API_KEY'),
+  lokiUrl: process.env['LOKI_URL'] ?? 'http://localhost:3100',
   pollIntervals: {
     system: envInt('POLL_SYSTEM', 2),
     docker: envInt('POLL_DOCKER', 5),

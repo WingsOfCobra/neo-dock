@@ -37,15 +37,15 @@ function UsageBar({
   const clamped = Math.min(100, Math.max(0, percent || 0));
   const color =
     clamped > 90
-      ? 'bg-neo-red'
+      ? 'bg-neo-red shadow-[0_0_8px_rgba(255,0,51,0.4)]'
       : clamped > 70
         ? 'bg-neo-yellow'
-        : 'bg-neo-cyan';
+        : 'bg-neo-red/70';
 
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
-        <span className="text-neo-text-secondary uppercase tracking-wide">
+        <span className="text-neo-text-secondary uppercase tracking-wide font-mono">
           {label}
         </span>
         <span className="font-mono text-neo-text-primary">
@@ -55,7 +55,7 @@ function UsageBar({
           )}
         </span>
       </div>
-      <div className="h-1.5 bg-neo-bg-deep rounded-sm overflow-hidden">
+      <div className="h-1.5 bg-neo-bg-deep overflow-hidden">
         <div
           className={`h-full ${color} transition-all duration-500`}
           style={{ width: `${clamped}%` }}
@@ -86,22 +86,22 @@ export function ServerMonitor() {
         {},
         {
           label: 'CPU %',
-          stroke: '#55EAD4',
+          stroke: '#FF0033',
           width: 1.5,
-          fill: 'rgba(85, 234, 212, 0.08)',
+          fill: 'rgba(255, 0, 51, 0.08)',
         },
       ],
       axes: [
         {
-          stroke: '#4A4A55',
-          grid: { stroke: 'rgba(42,42,58,0.5)', width: 1 },
-          ticks: { stroke: 'rgba(42,42,58,0.3)', width: 1 },
+          stroke: '#552222',
+          grid: { stroke: 'rgba(58,21,21,0.5)', width: 1 },
+          ticks: { stroke: 'rgba(58,21,21,0.3)', width: 1 },
           font: '10px JetBrains Mono',
         },
         {
-          stroke: '#4A4A55',
-          grid: { stroke: 'rgba(42,42,58,0.5)', width: 1 },
-          ticks: { stroke: 'rgba(42,42,58,0.3)', width: 1 },
+          stroke: '#552222',
+          grid: { stroke: 'rgba(58,21,21,0.5)', width: 1 },
+          ticks: { stroke: 'rgba(58,21,21,0.3)', width: 1 },
           font: '10px JetBrains Mono',
           scale: 'y',
         },
@@ -127,16 +127,15 @@ export function ServerMonitor() {
       title="System Monitor"
       status={health ? 'ok' : undefined}
       loading={health === null}
-      glowColor="cyan"
     >
       <div className="space-y-4">
         {/* Uptime */}
         {health && (
           <div className="flex items-baseline justify-between">
-            <span className="text-xs text-neo-text-secondary uppercase tracking-wide">
+            <span className="text-xs text-neo-text-secondary uppercase tracking-wide font-mono">
               Uptime
             </span>
-            <span className="font-mono text-neo-cyan text-sm">
+            <span className="font-mono text-neo-red text-sm">
               {formatUptime(health.uptime ?? 0)}
             </span>
           </div>
@@ -145,7 +144,7 @@ export function ServerMonitor() {
         {/* CPU Chart */}
         {chartData && (
           <div>
-            <p className="text-xs text-neo-text-secondary uppercase tracking-wide mb-1">
+            <p className="text-xs text-neo-text-secondary uppercase tracking-wide mb-1 font-mono">
               CPU Usage (1h)
             </p>
             <Chart data={chartData} options={chartOpts} height={120} />
@@ -164,7 +163,7 @@ export function ServerMonitor() {
         {/* Disk mounts */}
         {safeDisk.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs text-neo-text-secondary uppercase tracking-wide">
+            <p className="text-xs text-neo-text-secondary uppercase tracking-wide font-mono">
               Disk
             </p>
             {safeDisk.map((d, i) => (

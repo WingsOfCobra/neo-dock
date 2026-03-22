@@ -7,7 +7,8 @@
     "build": "npm run build -w client && npm run build -w server",
     "start": "npm run start -w server",
     "typecheck": "npm run typecheck -w client && npm run typecheck -w server",
-    "install:all": "npm install -w client && npm install -w server"
+    "install:all": "npm install -w client && npm install -w server",
+    "clean": "rm -rf node_modules client/node_modules server/node_modules"
   },
   "workspaces": [
     "client",

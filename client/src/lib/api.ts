@@ -13,13 +13,14 @@ export async function apiFetch<T = unknown>(
   options: RequestInit = {},
 ): Promise<T> {
   const url = `/api${path}`;
+  const headers: Record<string, string> = { ...options.headers as Record<string, string> };
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
   const res = await fetch(url, {
     ...options,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {

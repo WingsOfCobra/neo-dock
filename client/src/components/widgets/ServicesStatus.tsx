@@ -8,15 +8,15 @@ const statusConfig: Record<
   { color: string; bg: string; border: string; pulse: boolean }
 > = {
   active: {
-    color: 'text-neo-cyan',
-    bg: 'bg-neo-cyan/10',
-    border: 'border-neo-cyan/30',
+    color: 'text-neo-red',
+    bg: 'bg-neo-red/10',
+    border: 'border-neo-red/30',
     pulse: true,
   },
   running: {
-    color: 'text-neo-cyan',
-    bg: 'bg-neo-cyan/10',
-    border: 'border-neo-cyan/30',
+    color: 'text-neo-red',
+    bg: 'bg-neo-red/10',
+    border: 'border-neo-red/30',
     pulse: true,
   },
   inactive: {
@@ -27,8 +27,8 @@ const statusConfig: Record<
   },
   failed: {
     color: 'text-neo-red',
-    bg: 'bg-neo-red/10',
-    border: 'border-neo-red/30',
+    bg: 'bg-neo-red/20',
+    border: 'border-neo-red/50',
     pulse: false,
   },
 };
@@ -40,14 +40,18 @@ const defaultStatus = {
   pulse: false,
 };
 
-export function ServicesStatus() {
+interface ServicesStatusProps {
+  compact?: boolean;
+}
+
+export function ServicesStatus({ compact = false }: ServicesStatusProps) {
   const rawServices = useMetricsStore((s) => s.services);
   const services = Array.isArray(rawServices) ? rawServices : [];
   const loading = services.length === 0;
 
   return (
-    <Card title="Services" loading={loading} glowColor="cyan">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    <Card title="Services" loading={loading}>
+      <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 ${compact ? 'max-h-72 overflow-y-auto' : ''}`}>
         {services.map((svc) => {
           const cfg = statusConfig[svc.status] ?? defaultStatus;
 
@@ -63,14 +67,13 @@ export function ServicesStatus() {
                   'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
               }}
             >
-              {/* Pulse indicator */}
               {cfg.pulse && (
                 <span
-                  className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full ${cfg.color.replace('text-', 'bg-')} animate-pulse`}
+                  className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full ${cfg.color.replace('text-', 'bg-')} animate-pulse shadow-[0_0_4px_rgba(255,0,51,0.4)]`}
                 />
               )}
 
-              <p className="font-display text-[10px] uppercase tracking-[0.12em] text-neo-text-primary truncate">
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-neo-text-primary truncate">
                 {svc.name}
               </p>
               <p
@@ -84,7 +87,7 @@ export function ServicesStatus() {
       </div>
 
       {services.length === 0 && !loading && (
-        <p className="text-xs text-neo-text-disabled text-center py-4">
+        <p className="text-xs text-neo-text-disabled text-center py-4 font-mono">
           No services found.
         </p>
       )}
