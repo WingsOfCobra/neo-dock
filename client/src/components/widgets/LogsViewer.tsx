@@ -15,6 +15,62 @@ import { get } from '@/lib/api';
 import { useMetricsStore } from '@/stores/metricsStore';
 import type { LokiLogEntry } from '@/types';
 
+/* ── Source grouping ─────────────────────────────────────────── */
+
+interface SourceGroup {
+  label: string;
+  emoji: string;
+  // Which Loki label to filter on
+  lokiLabel: string;
+  // Static known members — shown even before label values load
+  members?: string[];
+}
+
+// Groups are matched against compose_service / service_name values
+const SOURCE_GROUPS: SourceGroup[] = [
+  {
+    label: 'Infrastructure',
+    emoji: '🐳',
+    lokiLabel: 'compose_service',
+    members: ['chef-api', 'neo-dock', 'solcloud-docs', 'vaultwarden', 'postgres', 'pgadmin', 'portainer'],
+  },
+  {
+    label: 'Automation',
+    emoji: '⚙️',
+    lokiLabel: 'compose_service',
+    members: ['n8n', 'n8n-runner', 'n8n-worker'],
+  },
+  {
+    label: 'Nextcloud',
+    emoji: '☁️',
+    lokiLabel: 'service_name',
+    members: ['nextcloud-aio-mastercontainer', 'nextcloud-aio-apache', 'nextcloud-aio-collabora', 'nextcloud-aio-clamav', 'nextcloud-aio-redis', 'nextcloud-aio-talk', 'nextcloud-aio-notify-push', 'nextcloud-aio-whiteboard'],
+  },
+  {
+    label: 'Monitoring',
+    emoji: '📊',
+    lokiLabel: 'compose_service',
+    members: ['grafana', 'prometheus', 'loki', 'alertmanager', 'cadvisor', 'node-exporter', 'promtail'],
+  },
+  {
+    label: 'Security',
+    emoji: '🔒',
+    lokiLabel: 'job',
+    members: ['security'],
+  },
+  {
+    label: 'Proxy & Network',
+    emoji: '🌐',
+    lokiLabel: 'service_name',
+    members: ['proxy-manager-app-1'],
+  },
+];
+
+// Map a service name to its group
+function getGroupForService(service: string): SourceGroup | undefined {
+  return SOURCE_GROUPS.find((g) => g.members?.some((m) => service.includes(m) || m.includes(service)));
+}
+
 /* ── Log level detection ─────────────────────────────────────── */
 
 type LogLevel = 'error' | 'warn' | 'info' | 'debug' | 'unknown';
@@ -133,10 +189,16 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
   const [loading, setLoading] = useState(false);
 
   // Filters
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [categoryValues, setCategoryValues] = useState<string[]>([]);
-  const [selectedValue, setSelectedValue] = useState<string>('all');
+  const [selectedGroup, setSelectedGroup] = useState<string>('all'); // group label or 'all'
+  const [selectedService, setSelectedService] = useState<string>('all'); // specific service value or 'all'
   const [levelFilter, setLevelFilter] = useState<LogLevel | 'all'>('all');
+  // Legacy compat — map new state to old category/value for LogQL building
+  const selectedCategory = useMemo(() => {
+    if (selectedGroup === 'all' || selectedService === 'all') return 'all';
+    const group = SOURCE_GROUPS.find((g) => g.label === selectedGroup);
+    return group?.lokiLabel ?? 'all';
+  }, [selectedGroup, selectedService]);
+  const selectedValue = selectedService;
   const [search, setSearch] = useState('');
   const [liveTail, setLiveTail] = useState(true);
 
@@ -150,20 +212,17 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(containerRef);
 
-  // When a category label is selected, fetch its possible values
+  // When group changes, reset service selection
   useEffect(() => {
-    if (selectedCategory === 'all') {
-      setCategoryValues([]);
-      setSelectedValue('all');
-      return;
-    }
+    setSelectedService('all');
+  }, [selectedGroup]);
 
-    get<LokiLabelValues>(`/loki/label/${encodeURIComponent(selectedCategory)}/values`)
-      .then((data) => {
-        setCategoryValues(data?.data ?? []);
-      })
-      .catch(() => setCategoryValues([]));
-  }, [selectedCategory]);
+  // Services available in the selected group
+  const availableServices = useMemo(() => {
+    if (selectedGroup === 'all') return [];
+    const group = SOURCE_GROUPS.find((g) => g.label === selectedGroup);
+    return group?.members ?? [];
+  }, [selectedGroup]);
 
   // Fetch historical logs when filters change (not in live tail mode)
   const fetchLogs = useCallback(async () => {
@@ -235,8 +294,16 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
 
     // Apply client-side filters on live tail data
     if (liveTail) {
-      if (selectedCategory !== 'all' && selectedValue !== 'all') {
-        processed = processed.filter((l) => l.labels[selectedCategory] === selectedValue);
+      if (selectedCategory !== 'all' && selectedService !== 'all') {
+        processed = processed.filter((l) => l.labels[selectedCategory] === selectedService);
+      } else if (selectedGroup !== 'all') {
+        // Filter by any member of the group
+        const group = SOURCE_GROUPS.find((g) => g.label === selectedGroup);
+        if (group?.members) {
+          processed = processed.filter((l) =>
+            group.members!.some((m) => l.labels[group.lokiLabel]?.includes(m) || m.includes(l.labels[group.lokiLabel] ?? ''))
+          );
+        }
       }
       if (levelFilter !== 'all') {
         processed = processed.filter((l) => l.level === levelFilter);
@@ -248,7 +315,7 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
     }
 
     return processed;
-  }, [liveTail, lokiLogs, historicalLogs, selectedCategory, selectedValue, levelFilter, search]);
+  }, [liveTail, lokiLogs, historicalLogs, selectedCategory, selectedService, selectedGroup, levelFilter, search]);
 
   // Level counts for the category bar
   const levelCounts = useMemo(() => {
@@ -266,11 +333,8 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
     }
   }, [displayLogs, liveTail]);
 
-  // Filter category labels — show useful ones
-  const usefulLabels = useMemo(() => {
-    const skip = new Set(['__name__', 'instance', 'host']);
-    return lokiLabels.filter((l) => !skip.has(l));
-  }, [lokiLabels]);
+  // Suppress unused warning — lokiLabels still used for Loki availability check
+  void lokiLabels;
 
   const containerHeight = isFullscreen
     ? 'h-[calc(100vh-120px)]'
@@ -282,32 +346,31 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
     <div ref={containerRef} className={isFullscreen ? 'bg-neo-bg-deep p-2' : ''}>
     <Card title="Loki Logs" loading={loading && displayLogs.length === 0}>
       <div className="space-y-2">
-        {/* Controls row 1: Category + Value */}
+        {/* Controls row 1: Group picker + Service picker */}
         <div className="flex gap-2 flex-wrap">
+          {/* Group selector — categorized */}
           <select
-            value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value);
-              setSelectedValue('all');
-            }}
+            value={selectedGroup}
+            onChange={(e) => setSelectedGroup(e.target.value)}
             className="bg-neo-bg-deep border border-neo-border text-[10px] font-mono text-neo-text-primary px-2 py-1 focus:border-neo-red focus:outline-none"
           >
             <option value="all">ALL SOURCES</option>
-            {usefulLabels.map((label) => (
-              <option key={label} value={label}>
-                {label.toUpperCase()}
+            {SOURCE_GROUPS.map((g) => (
+              <option key={g.label} value={g.label}>
+                {g.emoji} {g.label.toUpperCase()}
               </option>
             ))}
           </select>
 
-          {categoryValues.length > 0 && (
+          {/* Service selector — shown when a group is selected */}
+          {selectedGroup !== 'all' && availableServices.length > 0 && (
             <select
-              value={selectedValue}
-              onChange={(e) => setSelectedValue(e.target.value)}
+              value={selectedService}
+              onChange={(e) => setSelectedService(e.target.value)}
               className="bg-neo-bg-deep border border-neo-border text-[10px] font-mono text-neo-text-primary px-2 py-1 focus:border-neo-red focus:outline-none"
             >
-              <option value="all">ALL</option>
-              {categoryValues.map((v) => (
+              <option value="all">ALL IN GROUP</option>
+              {availableServices.map((v) => (
                 <option key={v} value={v}>
                   {v}
                 </option>
