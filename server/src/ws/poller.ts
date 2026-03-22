@@ -233,28 +233,33 @@ async function pollLoki(ws: WsManager): Promise<void> {
       : String((now - 30_000) * 1_000_000); // 30s ago in nanoseconds
     const endNs = String(now * 1_000_000);
 
-    const queryUrl = new URL('/loki/api/v1/query_range', lokiUrl);
-    queryUrl.searchParams.set('query', '{job=~".+"}');
-    queryUrl.searchParams.set('start', startNs);
-    queryUrl.searchParams.set('end', endNs);
-    queryUrl.searchParams.set('limit', '100');
-    queryUrl.searchParams.set('direction', 'forward');
+    // Fetch from both label dimensions in parallel:
+    // - compose_service=~".+" covers all Docker container logs
+    // - job=~".+"            covers file-based logs (fail2ban/security)
+    type LokiStream = { stream: Record<string, string>; values: Array<[string, string]> };
+    type LokiResponse = { data?: { result?: LokiStream[] } };
 
-    const logsResp = await fetch(queryUrl.toString(), {
-      headers: { Accept: 'application/json' },
-    });
+    const fetchQuery = async (query: string): Promise<LokiStream[]> => {
+      const url = new URL('/loki/api/v1/query_range', lokiUrl);
+      url.searchParams.set('query', query);
+      url.searchParams.set('start', startNs);
+      url.searchParams.set('end', endNs);
+      url.searchParams.set('limit', '100');
+      url.searchParams.set('direction', 'forward');
+      const resp = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+      if (!resp.ok) return [];
+      const data = await resp.json() as LokiResponse;
+      return data.data?.result ?? [];
+    };
 
+    const [dockerStreams, jobStreams] = await Promise.all([
+      fetchQuery('{compose_service=~".+"}'),
+      fetchQuery('{job=~".+"}'),
+    ]);
+
+    const logsResp = { ok: true }; // keep structure below intact
     if (logsResp.ok) {
-      const logsData = await logsResp.json() as {
-        data?: {
-          result?: Array<{
-            stream: Record<string, string>;
-            values: Array<[string, string]>;
-          }>;
-        };
-      };
-
-      const streams = logsData.data?.result ?? [];
+      const streams = [...dockerStreams, ...jobStreams];
       const entries: Array<{
         timestamp: string;
         line: string;

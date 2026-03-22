@@ -138,7 +138,8 @@ function processEntry(entry: LokiLogEntry): ProcessedLog {
   const tsMs = Number(BigInt(entry.timestamp) / 1_000_000n);
   const date = new Date(tsMs);
   const time = date.toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const source = entry.labels['job'] ?? entry.labels['container_name'] ?? entry.labels['unit'] ?? entry.labels['filename'] ?? 'unknown';
+  // Prefer compose_service (most descriptive), fall back through service_name, job, container_name, filename
+  const source = entry.labels['compose_service'] ?? entry.labels['service_name'] ?? entry.labels['job'] ?? entry.labels['container_name'] ?? entry.labels['unit'] ?? entry.labels['filename'] ?? 'unknown';
 
   return {
     timestamp: entry.timestamp,
@@ -204,8 +205,8 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
 
   // Debounce filter values to avoid hammering Loki on every keystroke
   const debouncedSearch = useDebounce(search, 500);
-  const debouncedCategory = useDebounce(selectedCategory, 300);
-  const debouncedValue = useDebounce(selectedValue, 300);
+  const debouncedCategory = useDebounce(selectedGroup, 300); // group label for LogQL building
+  const debouncedValue = useDebounce(selectedService, 300);
   const debouncedLevel = useDebounce(levelFilter, 300);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -229,12 +230,19 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
     setLoading(true);
     try {
       let logqlQuery: string;
-      if (debouncedCategory !== 'all' && debouncedValue !== 'all') {
-        logqlQuery = `{${debouncedCategory}="${debouncedValue}"}`;
-      } else if (debouncedCategory !== 'all') {
-        logqlQuery = `{${debouncedCategory}=~".+"}`;
+      const activeGroup = SOURCE_GROUPS.find((g) => g.label === debouncedCategory.replace(/^all$/, ''));
+
+      if (activeGroup && debouncedValue !== 'all') {
+        // Specific service within a group
+        logqlQuery = `{${activeGroup.lokiLabel}="${debouncedValue}"}`;
+      } else if (activeGroup && activeGroup.members && activeGroup.members.length > 0) {
+        // Whole group — match any member via regex
+        const pattern = activeGroup.members.map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+        logqlQuery = `{${activeGroup.lokiLabel}=~"${pattern}"}`;
       } else {
-        logqlQuery = '{job=~".+"}';
+        // All sources — use compose_service (broader Docker coverage) + job (file-based)
+        // We can't do OR in a single stream selector, so use compose_service which covers most
+        logqlQuery = '{compose_service=~".+"}';
       }
 
       // Add search filter in LogQL
@@ -294,14 +302,19 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
 
     // Apply client-side filters on live tail data
     if (liveTail) {
-      if (selectedCategory !== 'all' && selectedService !== 'all') {
-        processed = processed.filter((l) => l.labels[selectedCategory] === selectedService);
+      // Helper: get the "source" identifier from any stream label
+      const getSource = (l: ReturnType<typeof processEntry>) =>
+        l.labels['compose_service'] ?? l.labels['service_name'] ?? l.labels['job'] ?? '';
+
+      if (selectedGroup !== 'all' && selectedService !== 'all') {
+        // Specific service selected
+        processed = processed.filter((l) => getSource(l) === selectedService);
       } else if (selectedGroup !== 'all') {
-        // Filter by any member of the group
+        // Whole group selected — match any member
         const group = SOURCE_GROUPS.find((g) => g.label === selectedGroup);
         if (group?.members) {
           processed = processed.filter((l) =>
-            group.members!.some((m) => l.labels[group.lokiLabel]?.includes(m) || m.includes(l.labels[group.lokiLabel] ?? ''))
+            group.members!.some((m) => getSource(l) === m)
           );
         }
       }
