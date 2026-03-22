@@ -3,12 +3,45 @@
 import { useEffect, useState } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore, type Theme } from '@/stores/themeStore';
 import { useSoundStore } from '@/stores/soundStore';
 import { useSound } from '@/hooks/useSound';
 import { NotificationBell } from '@/components/ui/NotificationBell';
 
 interface TopBarProps {
   wsConnected: boolean;
+}
+
+const themeSwatches: { id: Theme; color: string; label: string }[] = [
+  { id: 'red', color: '#FF0033', label: 'Cyberpunk Red' },
+  { id: 'blue', color: '#0088FF', label: 'Arasaka Blue' },
+  { id: 'green', color: '#00FF33', label: 'Militech Green' },
+  { id: 'amber', color: '#FFAA00', label: 'NetWatch Amber' },
+];
+
+function ThemePicker() {
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+
+  return (
+    <div className="flex items-center gap-1">
+      {themeSwatches.map((s) => (
+        <button
+          key={s.id}
+          title={s.label}
+          onClick={() => setTheme(s.id)}
+          className="w-3 h-3 transition-transform hover:scale-125"
+          style={{
+            background: s.color,
+            clipPath: 'polygon(2px 0%, calc(100% - 2px) 0%, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 0% calc(100% - 2px), 0% 2px)',
+            outline: theme === s.id ? `1px solid ${s.color}` : 'none',
+            outlineOffset: '2px',
+            opacity: theme === s.id ? 1 : 0.5,
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 function Clock() {
@@ -95,6 +128,8 @@ export function TopBar({ wsConnected }: TopBarProps) {
         </span>
       </div>
 
+      {/* Theme picker */}
+      <ThemePicker />
       {/* Sound toggle */}
       <button
         onClick={handleToggleSound}

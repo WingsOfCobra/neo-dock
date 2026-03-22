@@ -1,13 +1,19 @@
-/* ── Particles – sparse floating motes (all red shades) ──────── */
+/* ── Particles – sparse floating motes (themed) ──────────────── */
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 const COUNT = 400;
 const SPREAD = 30;
 
-export function Particles() {
+interface ParticlesProps {
+  primary: string;
+  primaryDim: string;
+  accent: string;
+}
+
+export function Particles({ primary, primaryDim, accent }: ParticlesProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null!);
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
@@ -27,20 +33,19 @@ export function Particles() {
     return arr;
   }, []);
 
-  // Assign colors once — all red shades
-  useMemo(() => {
+  // Update colors when theme changes
+  useEffect(() => {
     const mesh = meshRef.current;
     if (!mesh) return;
-    const bright = new THREE.Color('#FF0033');
-    const dim = new THREE.Color('#990020');
-    const hot = new THREE.Color('#FF4444');
+    const bright = new THREE.Color(primary);
+    const dim = new THREE.Color(primaryDim);
+    const hot = new THREE.Color(accent);
     for (let i = 0; i < COUNT; i++) {
       const r = Math.random();
       mesh.setColorAt(i, r > 0.6 ? bright : r > 0.3 ? dim : hot);
     }
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meshRef.current]);
+  }, [primary, primaryDim, accent]);
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
