@@ -21,5 +21,10 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_DIR }}
+            # Sync docker-compose.yml from repo
+            curl -fsSL https://raw.githubusercontent.com/WingsOfCobra/neo-dock/main/docker-compose.yml -o docker-compose.yml.new
+            mv docker-compose.yml.new docker-compose.yml
+            # Deploy
             docker compose pull
+            docker compose down
             docker compose up -d
