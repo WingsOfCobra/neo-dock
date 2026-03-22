@@ -1,5 +1,6 @@
 /* ── GitHubDashboard – repos, PRs, issues, workflows, notifications ── */
 
+import { useNavigate } from 'react-router-dom';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
 
@@ -46,6 +47,7 @@ interface GitHubDashboardProps {
 }
 
 export function GitHubDashboard({ compact = false }: GitHubDashboardProps) {
+  const navigate = useNavigate();
   const rawRepos = useMetricsStore((s) => s.githubRepos);
   const rawNotifications = useMetricsStore((s) => s.githubNotifications);
   const rawPRs = useMetricsStore((s) => s.githubPRs);
@@ -178,7 +180,8 @@ export function GitHubDashboard({ compact = false }: GitHubDashboardProps) {
           {sortedRepos.map((repo) => (
             <div
               key={repo.fullName ?? repo.name}
-              className="flex items-center gap-2 px-2 py-1.5 border border-transparent hover:border-neo-red/20 transition-colors"
+              onClick={() => navigate(`/repo/${repo.fullName?.split('/')[0] ?? 'unknown'}/${repo.name}`)}
+              className="flex items-center gap-2 px-2 py-1.5 border border-transparent hover:border-neo-red/20 transition-colors cursor-pointer"
             >
               <span
                 className="w-2 h-2 rounded-full shrink-0"

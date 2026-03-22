@@ -14,6 +14,7 @@ import { DockerPage } from '@/pages/DockerPage';
 import { CommsPage } from '@/pages/CommsPage';
 import { TasksPage } from '@/pages/TasksPage';
 import { LogsPage } from '@/pages/LogsPage';
+import { RepoDetailPage } from '@/pages/RepoDetailPage';
 import type { TodoItem } from '@/types';
 
 /* ── Route → topic group mapping ──────────────────────────── */
@@ -27,6 +28,7 @@ const ROUTE_GROUPS: Record<string, string[]> = {
   '/comms':  ['github', 'email'],
   '/tasks':  ['cron', 'todos'],
   '/logs':   ['loki'],
+  '/repo/:owner/:repo': ['github'],
 };
 
 /* ── Error Boundary ────────────────────────────────────────── */
@@ -278,6 +280,7 @@ export default function App() {
               <Route path="comms" element={<CommsPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="logs" element={<LogsPage />} />
+              <Route path="repo/:owner/:repo" element={<RepoDetailPage />} />
             </Route>
           </Routes>
         </ErrorBoundary>

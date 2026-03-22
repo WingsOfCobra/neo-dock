@@ -378,6 +378,15 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
           </button>
         </div>
 
+        {/* Loki health indicator */}
+        {!loading && lokiLabels.length === 0 && (
+          <div className="flex items-center gap-2 px-2 py-1 bg-neo-yellow/5 border border-neo-yellow/20 font-mono text-[10px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-neo-yellow" />
+            <span className="text-neo-yellow">LOKI UNAVAILABLE</span>
+            <span className="text-neo-text-disabled">— check LOKI_URL config or Loki container</span>
+          </div>
+        )}
+
         {/* Log output */}
         <div
           ref={scrollRef}
@@ -405,7 +414,11 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
             ))
           ) : (
             <p className="text-[10px] font-mono text-neo-text-disabled">
-              {loading ? '> Loading..._' : '> No log entries._'}
+              {loading
+                ? '> Loading..._'
+                : liveTail
+                  ? '> Awaiting log stream... (Loki may be unavailable or empty)_'
+                  : '> No log entries._'}
             </p>
           )}
         </div>
