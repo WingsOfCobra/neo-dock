@@ -1,6 +1,6 @@
 services:
   neo-dock:
-    image: ghcr.io/wingscobra/neo-dock:latest
+    image: ghcr.io/wingsofcobra/neo-dock:latest
     container_name: neo-dock
     restart: unless-stopped
     ports:

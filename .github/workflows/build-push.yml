@@ -33,5 +33,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/wingscobra/neo-dock:latest
-            ghcr.io/wingscobra/neo-dock:sha-${{ github.sha }}
+            ghcr.io/wingsofcobra/neo-dock:latest
+            ghcr.io/wingsofcobra/neo-dock:sha-${{ github.sha }}
