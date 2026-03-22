@@ -1,4 +1,4 @@
-import type { WidgetConfig, WidgetType } from '@/types/widgets';
+import type { WidgetConfig, WidgetType } from '@/types';
 
 export const BREAKPOINTS = { lg: 1200, md: 996, sm: 768 } as const;
 export const COLS = { lg: 12, md: 8, sm: 4 } as const;

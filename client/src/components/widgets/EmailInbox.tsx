@@ -1,12 +1,13 @@
-/* ── EmailInbox – unread count + email list with preview ────── */
+/* ── EmailInbox – unread count + email list with thread preview ── */
 
 import { useState, useCallback } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
 import { get } from '@/lib/api';
-import type { EmailThread } from '@/types';
+import type { ChefEmailThread } from '@/types';
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | undefined): string {
+  if (!dateStr) return '--';
   const d = new Date(dateStr);
   const now = new Date();
   const isToday = d.toDateString() === now.toDateString();
@@ -21,28 +22,29 @@ interface EmailInboxProps {
 }
 
 export function EmailInbox({ compact = false }: EmailInboxProps) {
+  const emailCount = useMetricsStore((s) => s.emailCount);
   const rawEmails = useMetricsStore((s) => s.emails);
   const emails = Array.isArray(rawEmails) ? rawEmails : [];
   const [expandedUid, setExpandedUid] = useState<number | null>(null);
-  const [threadBody, setThreadBody] = useState('');
+  const [threadMessages, setThreadMessages] = useState<NonNullable<ChefEmailThread['messages']>>([]);
   const [threadLoading, setThreadLoading] = useState(false);
 
   const toggleThread = useCallback(
     async (uid: number) => {
       if (expandedUid === uid) {
         setExpandedUid(null);
-        setThreadBody('');
+        setThreadMessages([]);
         return;
       }
       setExpandedUid(uid);
       setThreadLoading(true);
       try {
-        const data = await get<EmailThread>(
+        const data = await get<ChefEmailThread>(
           `/chef/email/thread/${uid}`,
         );
-        setThreadBody(data.body ?? '');
+        setThreadMessages(data?.messages ?? []);
       } catch {
-        setThreadBody('Failed to load email.');
+        setThreadMessages([]);
       } finally {
         setThreadLoading(false);
       }
@@ -50,7 +52,7 @@ export function EmailInbox({ compact = false }: EmailInboxProps) {
     [expandedUid],
   );
 
-  const loading = emails.length === 0;
+  const loading = emails.length === 0 && emailCount === 0;
 
   return (
     <Card title="Email" loading={loading}>
@@ -58,7 +60,7 @@ export function EmailInbox({ compact = false }: EmailInboxProps) {
         {/* Unread count */}
         <div className="flex items-center gap-2 mb-2">
           <span className="text-lg font-mono text-neo-red font-bold">
-            {emails.length}
+            {emailCount}
           </span>
           <span className="text-[10px] uppercase tracking-wide text-neo-text-disabled font-mono">
             Unread
@@ -73,7 +75,7 @@ export function EmailInbox({ compact = false }: EmailInboxProps) {
             <div key={email.uid} className="border border-neo-border/50 hover:border-neo-red/30 transition-colors">
               <button
                 className="w-full text-left px-3 py-2 flex items-start gap-2"
-                onClick={() => toggleThread(email.uid)}
+                onClick={() => toggleThread(email.uid!)}
               >
                 <span className="w-1 h-1 rounded-full bg-neo-red shrink-0 mt-2 shadow-[0_0_4px_rgba(255,0,51,0.4)]" />
                 <div className="flex-1 min-w-0">
@@ -92,16 +94,31 @@ export function EmailInbox({ compact = false }: EmailInboxProps) {
               </button>
 
               {isExpanded && (
-                <div className="border-t border-neo-border/50 bg-neo-bg-deep p-3 max-h-40 overflow-auto">
+                <div className="border-t border-neo-border/50 bg-neo-bg-deep p-3 max-h-60 overflow-auto">
                   {threadLoading ? (
                     <div className="flex items-center gap-2 text-xs text-neo-text-disabled">
                       <div className="w-3 h-3 border border-neo-red border-t-transparent rounded-full animate-spin" />
                       Loading...
                     </div>
+                  ) : threadMessages.length > 0 ? (
+                    <div className="space-y-3">
+                      {threadMessages.map((msg, i) => (
+                        <div key={msg.uid ?? i} className="space-y-1">
+                          <div className="flex items-baseline justify-between text-[10px] font-mono text-neo-text-disabled">
+                            <span>{msg.from}</span>
+                            <span>{formatDate(msg.date)}</span>
+                          </div>
+                          <pre className="text-[10px] font-mono text-neo-text-secondary whitespace-pre-wrap break-words leading-relaxed">
+                            {msg.text || 'No content.'}
+                          </pre>
+                          {i < threadMessages.length - 1 && (
+                            <div className="border-b border-neo-border/30 pt-1" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   ) : (
-                    <pre className="text-[10px] font-mono text-neo-text-secondary whitespace-pre-wrap break-words leading-relaxed">
-                      {threadBody || 'No content.'}
-                    </pre>
+                    <p className="text-[10px] font-mono text-neo-text-disabled">No content.</p>
                   )}
                 </div>
               )}

@@ -25,9 +25,9 @@ function Clock() {
 
 export function TopBar({ wsConnected }: TopBarProps) {
   const notificationCount = useMetricsStore(
-    (s) => s.githubNotifications.filter((n) => n.unread).length,
+    (s) => s.githubNotifications.length,
   );
-  const emailCount = useMetricsStore((s) => s.emails.length);
+  const emailCount = useMetricsStore((s) => s.emailCount);
   const logout = useAuthStore((s) => s.logout);
 
   const totalAlerts = notificationCount + emailCount;

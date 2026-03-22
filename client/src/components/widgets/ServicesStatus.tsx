@@ -49,11 +49,29 @@ export function ServicesStatus({ compact = false }: ServicesStatusProps) {
   const services = Array.isArray(rawServices) ? rawServices : [];
   const loading = services.length === 0;
 
+  const activeCount = services.filter((s) => s.active).length;
+  const failedCount = services.filter((s) => s.status === 'failed' || s.status === 'inactive').length;
+
   return (
-    <Card title="Services" loading={loading}>
+    <Card
+      title="Services"
+      loading={loading}
+      status={failedCount > 0 ? 'warning' : activeCount > 0 ? 'ok' : undefined}
+    >
+      {/* Summary bar */}
+      {services.length > 0 && (
+        <div className="flex items-center gap-3 mb-3 text-[10px] font-mono">
+          <span className="text-neo-red">{activeCount} active</span>
+          {failedCount > 0 && (
+            <span className="text-neo-yellow">{failedCount} down</span>
+          )}
+          <span className="text-neo-text-disabled">{services.length} total</span>
+        </div>
+      )}
+
       <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 ${compact ? 'max-h-72 overflow-y-auto' : ''}`}>
         {services.map((svc) => {
-          const cfg = statusConfig[svc.status] ?? defaultStatus;
+          const cfg = statusConfig[svc.status ?? ''] ?? defaultStatus;
 
           return (
             <div
@@ -79,8 +97,21 @@ export function ServicesStatus({ compact = false }: ServicesStatusProps) {
               <p
                 className={`text-[10px] font-mono uppercase mt-0.5 ${cfg.color}`}
               >
-                {svc.status}
+                {svc.status ?? (svc.active ? 'active' : 'inactive')}
               </p>
+
+              {/* Details: uptime, memory, PID */}
+              <div className="mt-1 space-y-0.5 text-[9px] font-mono text-neo-text-disabled">
+                {svc.uptime && (
+                  <p>UP {svc.uptime}</p>
+                )}
+                {svc.memory && (
+                  <p>MEM {svc.memory}</p>
+                )}
+                {svc.pid != null && (
+                  <p>PID {svc.pid}</p>
+                )}
+              </div>
             </div>
           );
         })}

@@ -37,38 +37,18 @@ async function chefFetch<T = unknown>(path: string, options?: RequestInit): Prom
 
 async function pollSystem(ws: WsManager): Promise<void> {
   if (!ws.hasSubscribers('system')) return;
+
   try {
-    const raw = await chefFetch<Record<string, unknown>>('/system/health');
-
-    // Normalize field names — chef-api may use snake_case or different keys
-    const health: Record<string, unknown> = {
-      hostname: raw['hostname'] ?? '',
-      platform: raw['platform'] ?? '',
-      arch: raw['arch'] ?? '',
-      uptime: raw['uptime'] ?? 0,
-      cpuModel: raw['cpuModel'] ?? raw['cpu_model'] ?? '',
-      cpuCores: raw['cpuCores'] ?? raw['cpu_cores'] ?? raw['cores'] ?? 0,
-      cpu: raw['cpu'] ?? raw['cpu_percent'] ?? raw['cpuPercent'] ?? 0,
-      memTotal: raw['memTotal'] ?? raw['mem_total'] ?? raw['totalMem'] ?? 0,
-      memUsed: raw['memUsed'] ?? raw['mem_used'] ?? raw['usedMem'] ?? 0,
-      memFree: raw['memFree'] ?? raw['mem_free'] ?? raw['freeMem'] ?? 0,
-      memUsedPercent: raw['memUsedPercent'] ?? raw['mem_used_percent'] ?? 0,
-      loadAvg: raw['loadAvg'] ?? raw['load_avg'] ?? raw['loadavg'] ?? [0, 0, 0],
-    };
-
-    // Compute memUsedPercent if not provided
-    const memTotal = Number(health['memTotal']) || 0;
-    const memUsed = Number(health['memUsed']) || 0;
-    if (!health['memUsedPercent'] && memTotal > 0) {
-      health['memUsedPercent'] = (memUsed / memTotal) * 100;
-    }
-
+    // Broadcast the full health object — let the client read the nested fields
+    const health = await chefFetch<Record<string, unknown>>('/system/health');
     ws.broadcast('system:health', health);
 
-    // Push to metrics buffer
+    // Push to metrics buffer using nested fields
     const now = Date.now();
-    const cpu = typeof health['cpu'] === 'number' ? health['cpu'] : 0;
-    const memUsedPercent = typeof health['memUsedPercent'] === 'number' ? (health['memUsedPercent'] as number) : 0;
+    const cpuObj = health['cpu'] as Record<string, unknown> | undefined;
+    const memObj = health['memory'] as Record<string, unknown> | undefined;
+    const cpu = Number(cpuObj?.['usage_percent'] ?? 0);
+    const memUsedPercent = parseFloat(String(memObj?.['usedPercent'] ?? '0'));
     const loadAvg = Array.isArray(health['loadAvg']) ? (health['loadAvg'] as number[]) : [0, 0, 0];
 
     const metrics: SystemMetrics = { cpu, memUsedPercent, loadAvg };
@@ -78,90 +58,65 @@ async function pollSystem(ws: WsManager): Promise<void> {
   }
 
   try {
-    const raw = await chefFetch<unknown>('/system/disk');
-
-    // Unwrap common response shapes: { disks: [...] }, { data: [...] }, or raw array
-    let disks: unknown[];
-    if (Array.isArray(raw)) {
-      disks = raw;
-    } else if (raw && typeof raw === 'object') {
-      const obj = raw as Record<string, unknown>;
-      disks = (Array.isArray(obj['disks']) ? obj['disks']
-        : Array.isArray(obj['data']) ? obj['data']
-        : Array.isArray(obj['mounts']) ? obj['mounts']
-        : []) as unknown[];
-    } else {
-      disks = [];
-    }
-
-    // Normalize disk field names
-    const normalized = disks.map((d) => {
-      if (!d || typeof d !== 'object') return d;
-      const entry = d as Record<string, unknown>;
-      return {
-        mount: entry['mount'] ?? entry['mountpoint'] ?? entry['mount_point'] ?? entry['path'] ?? '',
-        filesystem: entry['filesystem'] ?? entry['fs'] ?? entry['type'] ?? '',
-        size: entry['size'] ?? entry['total'] ?? 0,
-        used: entry['used'] ?? 0,
-        available: entry['available'] ?? entry['free'] ?? entry['avail'] ?? 0,
-        usedPercent: entry['usedPercent'] ?? entry['used_percent'] ?? entry['use_percent'] ?? entry['capacity'] ?? 0,
-      };
-    });
-
-    ws.broadcast('system:disk', normalized);
+    // Broadcast disk array directly — chef-api returns an array
+    const disks = await chefFetch<unknown>('/system/disk');
+    ws.broadcast('system:disk', Array.isArray(disks) ? disks : []);
   } catch (err) {
     log.error('system/disk failed', err);
   }
+
+  try {
+    const processes = await chefFetch<unknown[]>('/system/processes');
+    ws.broadcast('system:processes', Array.isArray(processes) ? processes : []);
+  } catch (err) {
+    log.error('system/processes failed', err);
+  }
 }
 
-interface ContainerInfo {
+interface ChefContainerEntry {
   id?: string;
-  Id?: string;
-}
-
-interface ContainerStatsEntry {
-  id?: string;
-  Id?: string;
-  cpuPercent?: number;
-  cpu_percent?: number;
-  memPercent?: number;
-  mem_percent?: number;
-  memUsage?: number;
-  mem_usage?: number;
+  name?: string;
 }
 
 async function pollDocker(ws: WsManager): Promise<void> {
   if (!ws.hasSubscribers('docker')) return;
+
   try {
-    const containers = await chefFetch<ContainerInfo[]>('/docker/containers');
+    const containers = await chefFetch<ChefContainerEntry[]>('/docker/containers');
     ws.broadcast('docker:containers', containers);
+
+    // Fetch per-container stats for running containers
+    if (Array.isArray(containers)) {
+      for (const c of containers) {
+        const cId = c.id ?? c.name;
+        if (!cId) continue;
+        try {
+          const stats = await chefFetch<Record<string, unknown>>(`/docker/containers/${encodeURIComponent(cId)}/stats`);
+          ws.broadcast('docker:containerStats', stats);
+
+          // Push to per-container metrics buffer
+          const now = Date.now();
+          const metrics: ContainerMetrics = {
+            cpuPercent: Number(stats['cpu_percent'] ?? 0),
+            memPercent: Number(stats['memory_percent'] ?? 0),
+            memUsage: Number(stats['memory_usage'] ?? 0),
+          };
+          const buffer = getOrCreateContainerBuffer(cId);
+          buffer.push(now, metrics);
+        } catch {
+          // Individual container stats can fail if container is stopped
+        }
+      }
+    }
   } catch (err) {
     log.error('docker/containers failed', err);
   }
 
   try {
-    const stats = await chefFetch<ContainerStatsEntry[]>('/docker/stats');
-    ws.broadcast('docker:stats', stats);
-
-    // Push to per-container metrics buffer
-    const now = Date.now();
-    if (Array.isArray(stats)) {
-      for (const entry of stats) {
-        const containerId = entry.id ?? entry.Id;
-        if (!containerId) continue;
-
-        const metrics: ContainerMetrics = {
-          cpuPercent: entry.cpuPercent ?? entry.cpu_percent ?? 0,
-          memPercent: entry.memPercent ?? entry.mem_percent ?? 0,
-          memUsage: entry.memUsage ?? entry.mem_usage ?? 0,
-        };
-
-        const buffer = getOrCreateContainerBuffer(containerId);
-        buffer.push(now, metrics);
-      }
-    }
+    const overview = await chefFetch<Record<string, unknown>>('/docker/stats');
+    ws.broadcast('docker:overview', overview);
   } catch (err) {
-    log.error('docker/stats failed', err);
+    log.error('docker/stats (overview) failed', err);
   }
 }
 
@@ -196,6 +151,7 @@ async function pollGithub(ws: WsManager): Promise<void> {
 async function pollEmail(ws: WsManager): Promise<void> {
   if (!ws.hasSubscribers('email')) return;
   try {
+    // Broadcast the full { count, messages } object
     const unread = await chefFetch('/email/unread');
     ws.broadcast('email:unread', unread);
   } catch (err) {
@@ -211,11 +167,19 @@ async function pollCron(ws: WsManager): Promise<void> {
   } catch (err) {
     log.error('cron/jobs failed', err);
   }
+
+  try {
+    const health = await chefFetch('/cron/health');
+    ws.broadcast('cron:health', health);
+  } catch (err) {
+    log.error('cron/health failed', err);
+  }
 }
 
 async function pollTodos(ws: WsManager): Promise<void> {
   if (!ws.hasSubscribers('todos')) return;
   try {
+    // Broadcast the full { db, file, total } structure
     const todos = await chefFetch('/todo');
     ws.broadcast('todo:list', todos);
   } catch (err) {

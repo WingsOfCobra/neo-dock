@@ -14,6 +14,7 @@ import { DockerPage } from '@/pages/DockerPage';
 import { CommsPage } from '@/pages/CommsPage';
 import { TasksPage } from '@/pages/TasksPage';
 import { LogsPage } from '@/pages/LogsPage';
+import type { TodoItem } from '@/types';
 
 /* ── Route → topic group mapping ──────────────────────────── */
 
@@ -81,6 +82,52 @@ function asArray(data: unknown): unknown[] {
   return [];
 }
 
+function asObj(data: unknown): Record<string, unknown> | null {
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    return data as Record<string, unknown>;
+  }
+  return null;
+}
+
+/* ── Todo normalizer: merge db + file into TodoItem[] ──────── */
+
+function normalizeTodos(data: unknown): { items: TodoItem[]; total: number } {
+  const obj = asObj(data);
+  if (!obj) return { items: [], total: 0 };
+
+  const items: TodoItem[] = [];
+
+  const dbArr = asArray(obj['db']);
+  for (const raw of dbArr) {
+    const row = asObj(raw);
+    if (!row) continue;
+    items.push({
+      id: Number(row['id'] ?? 0),
+      title: String(row['title'] ?? ''),
+      description: row['description'] as string | null | undefined,
+      completed: row['completed'] === 1 || row['completed'] === true,
+      source: 'db',
+      createdAt: row['created_at'] as string | undefined,
+      updatedAt: row['updated_at'] as string | undefined,
+    });
+  }
+
+  const fileArr = asArray(obj['file']);
+  for (const raw of fileArr) {
+    const row = asObj(raw);
+    if (!row) continue;
+    items.push({
+      id: Number(row['id'] ?? 0),
+      title: String(row['title'] ?? ''),
+      completed: row['completed'] === true || row['completed'] === 1,
+      source: 'file',
+      fileSource: row['source'] as string | undefined,
+    });
+  }
+
+  return { items, total: Number(obj['total'] ?? items.length) };
+}
+
 /* ── WebSocket hook ────────────────────────────────────────── */
 
 function useWsConnection() {
@@ -100,28 +147,20 @@ function useWsConnection() {
               s.setSystemHealth(d as Parameters<typeof s.setSystemHealth>[0]);
             }
             break;
-          case 'system:disk': {
-            let diskArr: unknown[];
-            if (Array.isArray(d)) {
-              diskArr = d;
-            } else if (d && typeof d === 'object') {
-              const obj = d as Record<string, unknown>;
-              diskArr = (Array.isArray(obj['disks']) ? obj['disks']
-                : Array.isArray(obj['data']) ? obj['data']
-                : Array.isArray(obj['mounts']) ? obj['mounts']
-                : []) as unknown[];
-            } else {
-              diskArr = [];
-            }
-            s.setSystemDisk(diskArr as Parameters<typeof s.setSystemDisk>[0]);
+          case 'system:disk':
+            s.setSystemDisk(asArray(d) as Parameters<typeof s.setSystemDisk>[0]);
             break;
-          }
+          case 'system:processes':
+            s.setSystemProcesses(asArray(d) as Parameters<typeof s.setSystemProcesses>[0]);
+            break;
           case 'docker:containers':
             s.setContainers(asArray(d) as Parameters<typeof s.setContainers>[0]);
             break;
-          case 'docker:stats':
-            s.setContainerStats(asArray(d) as Parameters<typeof s.setContainerStats>[0]);
+          case 'docker:overview': {
+            const obj = asObj(d);
+            if (obj) s.setDockerOverview(obj as Parameters<typeof s.setDockerOverview>[0]);
             break;
+          }
           case 'services:status':
             s.setServices(asArray(d) as Parameters<typeof s.setServices>[0]);
             break;
@@ -132,23 +171,27 @@ function useWsConnection() {
             s.setGithubNotifications(asArray(d) as Parameters<typeof s.setGithubNotifications>[0]);
             break;
           case 'email:unread': {
-            const payload = d as Record<string, unknown> | null;
-            const messages = payload?.messages;
-            s.setEmails(asArray(messages) as Parameters<typeof s.setEmails>[0]);
+            const payload = asObj(d);
+            if (payload) {
+              s.setEmailCount(Number(payload['count'] ?? 0));
+              s.setEmails(asArray(payload['messages']) as Parameters<typeof s.setEmails>[0]);
+            }
             break;
           }
           case 'cron:jobs':
             s.setCronJobs(asArray(d) as Parameters<typeof s.setCronJobs>[0]);
             break;
-          case 'todo:list': {
-            const todoPayload = d as Record<string, unknown> | null;
-            const db = todoPayload?.db;
-            s.setTodos(asArray(db) as Parameters<typeof s.setTodos>[0]);
+          case 'cron:health': {
+            const obj = asObj(d);
+            if (obj) s.setCronHealth(obj as Parameters<typeof s.setCronHealth>[0]);
             break;
           }
-          case 'logs:tail':
-            s.setLogEntries(asArray(d) as Parameters<typeof s.setLogEntries>[0]);
+          case 'todo:list': {
+            const { items, total } = normalizeTodos(d);
+            s.setTodos(items);
+            s.setTodoTotal(total);
             break;
+          }
           case 'loki:logs':
             s.appendLokiLogs(asArray(d) as Parameters<typeof s.appendLokiLogs>[0]);
             break;

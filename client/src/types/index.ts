@@ -1,124 +1,22 @@
-export * from "./chef-api.types";
+export * from './chef-api.types';
+export * from './chef-api.helpers';
 
-/* ── Neo-Dock shared types ─────────────────────────────────── */
+/* ── Neo-Dock UI types (not from chef-api) ───────────────────── */
 
-export interface SystemHealth {
-  hostname: string;
-  platform: string;
-  arch: string;
-  uptime: number; // seconds
-  cpuModel: string;
-  cpuCores: number;
-  memTotal: number; // bytes
-  memUsed: number;
-  memFree: number;
-  loadAvg: [number, number, number];
-}
-
-export interface DiskInfo {
-  mount: string;
-  filesystem: string;
-  size: number; // bytes
-  used: number;
-  available: number;
-  usedPercent: number;
-}
-
+/** Metrics time-series point (computed server-side from system:health) */
 export interface MetricsPoint {
-  timestamp: number; // unix seconds
+  timestamp: number; // unix ms
   cpu: number;
   memUsedPercent: number;
-  loadAvg: number;
+  loadAvg: number[];
 }
 
-export interface ContainerInfo {
-  id: string;
-  name: string;
-  image: string;
-  status: string;
-  state: string;
-  ports: string;
-  created: string;
-}
-
-export interface ContainerStats {
-  id: string;
-  name: string;
+/** Per-container metrics time-series point */
+export interface ContainerMetricsPoint {
+  timestamp: number;
   cpuPercent: number;
   memPercent: number;
-  memUsage: string;
-  netIO: string;
-  blockIO: string;
-}
-
-export interface ServiceStatus {
-  name: string;
-  status: string; // "active" | "inactive" | "failed" | string
-}
-
-export interface GitHubRepo {
-  id: number;
-  name: string;
-  full_name: string;
-  html_url: string;
-  description: string | null;
-  language: string | null;
-  stargazers_count: number;
-  updated_at: string;
-  private: boolean;
-}
-
-export interface GitHubNotification {
-  id: string;
-  type: string;
-  title: string;
-  url: string;
-  repo: string;
-  reason: string;
-  unread: boolean;
-  updated_at: string;
-}
-
-export interface Email {
-  uid: number;
-  from: string;
-  subject: string;
-  date: string;
-  snippet: string;
-  flags: string[];
-}
-
-export interface EmailThread {
-  uid: number;
-  from: string;
-  subject: string;
-  date: string;
-  body: string;
-}
-
-export interface CronJob {
-  id: string;
-  name: string;
-  schedule: string;
-  command: string;
-  enabled: boolean;
-  lastRun: string | null;
-  nextRun: string | null;
-  lastStatus?: string;
-}
-
-export interface Todo {
-  id: string;
-  title: string;
-  completed: boolean;
-  createdAt: string;
-}
-
-export interface LogEntry {
-  timestamp: string;
-  level: string;
-  message: string;
-  source?: string;
+  memUsage: number;
 }
 
 /** Loki log entry as received from the poller */
@@ -132,4 +30,32 @@ export interface LokiLogEntry {
 export interface LokiCategory {
   label: string;
   value: string;
+}
+
+/** Unified todo item for display (normalized from db + file sources) */
+export interface TodoItem {
+  id: number;
+  title: string;
+  description?: string | null;
+  completed: boolean;
+  source: 'db' | 'file';
+  createdAt?: string;
+  updatedAt?: string;
+  fileSource?: string; // e.g. "TODO.md"
+}
+
+export type WidgetType =
+  | 'server-monitor'
+  | 'docker-containers'
+  | 'services-status'
+  | 'github-dashboard'
+  | 'email-inbox'
+  | 'todo-list'
+  | 'logs-viewer'
+  | 'cron-jobs';
+
+export interface WidgetConfig {
+  id: string;
+  type: WidgetType;
+  title: string;
 }

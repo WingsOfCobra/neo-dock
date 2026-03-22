@@ -1,7 +1,7 @@
 /* ── Sidebar – icon navigation for widgets ─────────────────── */
 
 import { WIDGET_CONFIGS, WIDGET_LABELS } from '@/lib/constants';
-import type { WidgetType } from '@/types/widgets';
+import type { WidgetType } from '@/types';
 
 interface SidebarProps {
   open: boolean;
