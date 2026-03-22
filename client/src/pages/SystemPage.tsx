@@ -2,6 +2,7 @@
 
 import { ServerMonitor } from '@/components/widgets/ServerMonitor';
 import { ServicesStatus } from '@/components/widgets/ServicesStatus';
+import { ProcessList } from '@/components/widgets/ProcessList';
 
 export function SystemPage() {
   return (
@@ -15,6 +16,7 @@ export function SystemPage() {
         </div>
         <ServicesStatus />
       </div>
+      <ProcessList />
     </div>
   );
 }

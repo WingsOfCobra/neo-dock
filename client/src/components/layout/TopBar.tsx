@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { useAuthStore } from '@/stores/authStore';
+import { NotificationBell } from '@/components/ui/NotificationBell';
 
 interface TopBarProps {
   wsConnected: boolean;
@@ -53,7 +54,7 @@ export function TopBar({ wsConnected }: TopBarProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Notification badge */}
+      {/* External alerts count */}
       {totalAlerts > 0 && (
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-neo-red animate-pulse shadow-[0_0_6px_rgba(255,0,51,0.6)]" />
@@ -62,6 +63,9 @@ export function TopBar({ wsConnected }: TopBarProps) {
           </span>
         </div>
       )}
+
+      {/* Notification bell */}
+      <NotificationBell />
 
       {/* WS status */}
       <div className="flex items-center gap-1.5">

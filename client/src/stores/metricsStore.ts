@@ -22,6 +22,19 @@ import type {
   TodoItem,
 } from '@/types';
 
+export interface AppNotification {
+  id: string;
+  type: 'error' | 'warning' | 'info' | 'success';
+  title: string;
+  message: string;
+  timestamp: number;
+  read: boolean;
+  source: 'container' | 'cron' | 'system' | 'github' | 'email';
+}
+
+const DEDUP_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_NOTIFICATIONS = 50;
+
 interface MetricsState {
   /* ── System ─────────────────────────────────────────────── */
   systemHealth: ChefSystemHealth | null;
@@ -59,6 +72,12 @@ interface MetricsState {
   /* ── Loki ───────────────────────────────────────────────── */
   lokiLogs: LokiLogEntry[];
   lokiLabels: string[];
+
+  /* ── Notifications ────────────────────────────────────── */
+  notifications: AppNotification[];
+  addNotification: (n: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => void;
+  markAllRead: () => void;
+  clearNotifications: () => void;
 
   /* ── Setters ────────────────────────────────────────────── */
   setSystemHealth: (h: ChefSystemHealth) => void;
@@ -111,6 +130,33 @@ export const useMetricsStore = create<MetricsState>()((set) => ({
   todoTotal: 0,
   lokiLogs: [],
   lokiLabels: [],
+  notifications: [],
+
+  addNotification: (n) =>
+    set((s) => {
+      const now = Date.now();
+      const isDupe = s.notifications.some(
+        (existing) =>
+          existing.title === n.title &&
+          existing.source === n.source &&
+          now - existing.timestamp < DEDUP_WINDOW_MS,
+      );
+      if (isDupe) return s;
+      const notif: AppNotification = {
+        ...n,
+        id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
+        timestamp: now,
+        read: false,
+      };
+      return {
+        notifications: [notif, ...s.notifications].slice(0, MAX_NOTIFICATIONS),
+      };
+    }),
+  markAllRead: () =>
+    set((s) => ({
+      notifications: s.notifications.map((n) => ({ ...n, read: true })),
+    })),
+  clearNotifications: () => set({ notifications: [] }),
 
   setSystemHealth: (h) => set({ systemHealth: h }),
   setSystemDisk: (d) => set({ systemDisk: d }),
