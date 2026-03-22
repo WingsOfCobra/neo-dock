@@ -1,9 +1,11 @@
 /* ── DockerContainers – list, stats, actions, logs, overview ── */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
+import { ExportButton } from '@/components/ui/ExportButton';
 import { post, get } from '@/lib/api';
+import { useSound } from '@/hooks/useSound';
 import type { ChefContainer, ChefContainerStats, ChefDockerOverview } from '@/types';
 
 const stateBadge: Record<string, string> = {
@@ -63,6 +65,7 @@ function ConfirmButton({
 }) {
   const [confirming, setConfirming] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { playSound } = useSound();
 
   useEffect(() => {
     return () => { if (timerRef.current !== null) clearTimeout(timerRef.current); };
@@ -71,12 +74,14 @@ function ConfirmButton({
   const handleClick = () => {
     if (loading || disabled) return;
     if (!confirming) {
+      playSound('click');
       setConfirming(true);
       timerRef.current = setTimeout(() => setConfirming(false), 3000);
       return;
     }
     setConfirming(false);
     if (timerRef.current !== null) clearTimeout(timerRef.current);
+    playSound('confirm');
     onConfirm();
   };
 
@@ -380,10 +385,32 @@ export function DockerContainers({ compact = false }: DockerContainersProps) {
   const runningCount = safeContainers.filter((c) => c.state === 'running').length;
   const stoppedCount = safeContainers.filter((c) => c.state !== 'running').length;
 
+  const exportData = useMemo(() => {
+    return safeContainers.map((c) => {
+      const stats = getStats(c);
+      return {
+        id: c.id,
+        name: c.name,
+        image: c.image,
+        state: c.state,
+        health: c.health,
+        uptime: c.uptime,
+        cpu_percent: stats?.cpu_percent,
+        memory_percent: stats?.memory_percent,
+        memory_usage: stats?.memory_usage,
+        memory_limit: stats?.memory_limit,
+        network_rx: stats?.network_rx,
+        network_tx: stats?.network_tx,
+      } as Record<string, unknown>;
+    });
+  }, [safeContainers, containerStats]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const exportAction = <ExportButton data={exportData} filename="docker" />;
+
   /* ── Compact mode (dashboard widget) ── */
   if (compact) {
     return (
-      <Card title="Docker" loading={loading}>
+      <Card title="Docker" loading={loading} actions={exportAction}>
         <div className="space-y-1.5 max-h-72 overflow-y-auto">
           {(dockerOverview || safeContainers.length > 0) && (
             <DockerOverviewBar
@@ -408,7 +435,7 @@ export function DockerContainers({ compact = false }: DockerContainersProps) {
 
   /* ── Full mode (Docker page) — card grid ── */
   return (
-    <Card title="Docker" loading={loading}>
+    <Card title="Docker" loading={loading} actions={exportAction}>
       <div className="space-y-3">
         {(dockerOverview || safeContainers.length > 0) && (
           <DockerOverviewBar

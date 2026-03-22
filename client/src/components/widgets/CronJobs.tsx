@@ -1,8 +1,9 @@
 /* ── CronJobs – schedule list with run action + history ──────── */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
+import { ExportButton } from '@/components/ui/ExportButton';
 import { post, get, del } from '@/lib/api';
 import type { ChefCronJob, ChefCronHistory } from '@/types';
 
@@ -97,8 +98,22 @@ export function CronJobs({ compact = false }: CronJobsProps) {
   const loading = jobs.length === 0;
   const enabledCount = jobs.filter((j) => j.enabled === 1).length;
 
+  const exportData = useMemo(() => {
+    return jobs.map((j) => ({
+      id: j.id,
+      name: j.name,
+      schedule: j.schedule,
+      type: j.type,
+      preset: j.preset,
+      enabled: j.enabled,
+      last_run_status: j.last_run_status,
+      last_run_at: j.last_run_at,
+      nextRun: j.nextRun,
+    }) as Record<string, unknown>);
+  }, [jobs]);
+
   return (
-    <Card title="Cron Jobs" loading={loading}>
+    <Card title="Cron Jobs" loading={loading} actions={<ExportButton data={exportData} filename="cron-jobs" />}>
       <div className={`space-y-1 ${compact ? 'max-h-72 overflow-y-auto' : ''}`}>
         {/* Scheduler health summary */}
         {(cronHealth || jobs.length > 0) && (
