@@ -89,136 +89,39 @@ These already work. Listed here so chef-api knows **not to break them**.
 
 ---
 
+## Recently Implemented Endpoints
+
+These were previously in the "Needed" section and are now available.
+
+### Per-Container Resource Stats — DONE
+`GET /docker/containers/:id/stats` — returns CPU%, memory usage/limit/%, network rx/tx per container.
+
+### Service Status — DONE
+`GET /services/status` — returns systemd service health with active state, uptime, memory, PID.
+
+### System Network — DONE
+`GET /system/network` — returns per-interface stats.
+```json
+[{ "name": "eth0", "rx_bytes": 1882267, "tx_bytes": 2954624, "rx_packets": 5669, "tx_packets": 6913, "ipv4": "172.27.0.2", "ipv6": null }]
+```
+
+### System Memory (Detailed) — DONE
+`GET /system/memory` — returns detailed memory breakdown.
+```json
+{ "total": 33590038528, "free": 6063292416, "available": 16634470400, "buffers": 1216192512, "cached": 8442425344, "swapTotal": 34288431104, "swapFree": 33215188992, "swapUsed": 1073242112, "usedPercent": 50.5, "swapUsedPercent": 3.1 }
+```
+
+### Docker Images — DONE
+`GET /docker/images` — returns image list with id, tags, size, created.
+
+### Docker Networks — DONE
+`GET /docker/networks` — returns network list with id, name, driver, scope, containers count.
+
+---
+
 ## New Endpoints Needed
 
-These don't exist yet. Neo-Dock needs them for full functionality.
-
-### 1. Per-Container Resource Stats
-
-**Why:** `GET /docker/stats` returns global Docker stats. Neo-Dock needs CPU and memory **per container** to show resource usage next to each container in the list.
-
-**Suggested endpoint:**
-```
-GET /docker/containers/:id/stats
-```
-
-**Expected response:**
-```json
-{
-  "id": "abc123def456",
-  "name": "nginx",
-  "cpu_percent": 2.4,
-  "memory_usage": 52428800,
-  "memory_limit": 536870912,
-  "memory_percent": 9.8,
-  "network_rx": 1048576,
-  "network_tx": 524288,
-  "block_read": 0,
-  "block_write": 4096,
-  "timestamp": "2026-03-21T12:00:00Z"
-}
-```
-
-**Notes:**
-- Docker API `GET /containers/:id/stats?stream=false` returns a single snapshot — parse from there
-- Should NOT be cached (called every 5s by neo-dock poller)
-- Status: **Needed**
-
----
-
-### 2. System Metrics with CPU Breakdown
-
-**Why:** `/system/health` returns `memory.usedPercent` and `loadAvg` but **no CPU usage percentage**. Neo-Dock needs actual CPU utilization for the main dashboard gauge and line chart.
-
-**Suggested change — extend `/system/health` response:**
-```json
-{
-  "status": "ok",
-  "uptime": 86400,
-  "hostname": "server-1",
-  "cpu": {
-    "usage_percent": 23.5,
-    "cores": 8,
-    "model": "AMD Ryzen 7 5800X"
-  },
-  "memory": {
-    "total": 34359738368,
-    "free": 17179869184,
-    "used_percent": 50.0
-  },
-  "loadAvg": [1.2, 0.8, 0.6],
-  "network": {
-    "rx_bytes": 1073741824,
-    "tx_bytes": 536870912
-  },
-  "timestamp": "2026-03-21T12:00:00Z"
-}
-```
-
-**New fields needed:**
-- `cpu.usage_percent` — overall CPU usage (can use `os.cpus()` delta over 1s, or `/proc/stat`)
-- `cpu.cores` — core count
-- `cpu.model` — CPU model string
-- `network.rx_bytes` / `network.tx_bytes` — total network bytes since boot (from `/proc/net/dev` or `os.networkInterfaces()`)
-
-**Notes:**
-- This is a backwards-compatible addition — existing fields stay the same
-- Status: **Needed**
-
----
-
-### 3. Service Status Endpoint
-
-**Why:** Neo-Dock shows a "Services" widget with systemd service health. Currently the only way is `POST /ssh/run` with `systemctl is-active` per service, which is slow and requires N requests.
-
-**Suggested endpoint:**
-```
-GET /services/status
-```
-
-**Configuration:** New env var `MONITORED_SERVICES` — comma-separated list of systemd unit names.
-```env
-MONITORED_SERVICES=nginx,docker,postgresql,redis,sshd
-```
-
-**Expected response:**
-```json
-{
-  "services": [
-    {
-      "name": "nginx",
-      "active": true,
-      "status": "active (running)",
-      "uptime": "2d 4h",
-      "memory": "12.5M",
-      "pid": 1234
-    },
-    {
-      "name": "postgresql",
-      "active": false,
-      "status": "inactive (dead)",
-      "uptime": null,
-      "memory": null,
-      "pid": null
-    }
-  ],
-  "timestamp": "2026-03-21T12:00:00Z"
-}
-```
-
-**Implementation hint:** Single `systemctl show` call with multiple units is faster than multiple `is-active` calls:
-```bash
-systemctl show nginx docker postgresql --property=ActiveState,SubState,MainPID,MemoryCurrent,ActiveEnterTimestamp --no-pager
-```
-
-**Notes:**
-- Should work locally (not via SSH) since chef-api runs on the monitored server
-- No caching needed (neo-dock polls every 30s)
-- Status: **Needed**
-
----
-
-### 4. Todo Delete
+### 1. Todo Delete
 
 **Why:** Neo-Dock todo widget needs a delete action. Currently there's no way to remove a todo — only mark complete.
 
@@ -235,7 +138,7 @@ DELETE /todo/:id
 
 ---
 
-### 5. GitHub Summary Endpoint (Optional)
+### 2. GitHub Summary Endpoint (Optional)
 
 **Why:** Neo-Dock's GitHub widget currently needs to call 5 separate endpoints to populate one widget. A combined summary endpoint would reduce latency and simplify polling.
 
@@ -263,15 +166,29 @@ GET /github/summary
 
 ---
 
+### 3. Multi-Server Remote Metrics (Phase 2)
+
+**Why:** Neo-Dock wants to monitor multiple remote hosts. Chef-api already has `/ssh/hosts` and `/ssh/run`, but gathering system metrics per-host via SSH is slow and fragile.
+
+**Suggested approach:** Deploy chef-api on each remote host. Neo-Dock server manages multiple chef-api URLs.
+
+**What Neo-Dock needs from chef-api:**
+- No new endpoints needed — each remote chef-api instance serves the same `/system/*`, `/docker/*` endpoints
+- Neo-Dock server will handle multi-instance orchestration
+
+**Notes:**
+- Status: **Future** — Neo-Dock will implement multi-server on its own server layer
+- Chef-api stays single-host; Neo-Dock aggregates
+
+---
+
 ## Priority Order
 
 | # | What | Priority | Blocking? |
 |---|------|----------|-----------|
-| 1 | Extend `/system/health` with CPU + network | **High** | Yes — main dashboard gauge has no data without this |
-| 2 | `GET /docker/containers/:id/stats` | **High** | Yes — per-container stats needed for Docker widget |
-| 3 | `GET /services/status` | **Medium** | Partial — can workaround via SSH but slow |
-| 4 | `DELETE /todo/:id` | **Low** | No — can hide completed todos instead |
-| 5 | `GET /github/summary` | **Low** | No — individual endpoints work fine |
+| 1 | `DELETE /todo/:id` | **Low** | No — can hide completed todos instead |
+| 2 | `GET /github/summary` | **Low** | No — individual endpoints work fine |
+| 3 | Multi-server remote metrics | **Future** | No — each host runs its own chef-api |
 
 ---
 
@@ -296,4 +213,4 @@ When either side makes changes:
 2. If a response shape changes, update the **Response shapes we depend on** section
 3. If a new endpoint is added, move it from "New Endpoints Needed" to "Existing Endpoints"
 
-Last synced: 2026-03-21
+Last synced: 2026-03-22
