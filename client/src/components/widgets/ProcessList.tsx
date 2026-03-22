@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
+import { ExportButton } from '@/components/ui/ExportButton';
 
 interface ProcessListProps {
   compact?: boolean;
@@ -29,8 +30,21 @@ export function ProcessList({ compact = false }: ProcessListProps) {
     return 'text-neo-text-secondary';
   }
 
+  const exportData = useMemo(() => {
+    return sorted.map((proc) => {
+      const p = proc as Record<string, unknown>;
+      return {
+        pid: p['pid'],
+        name: p['name'] ?? p['command'],
+        cpu_percent: p['cpu_percent'] ?? p['cpu'],
+        mem_percent: p['mem_percent'] ?? p['memory'],
+        user: p['user'] ?? p['username'],
+      } as Record<string, unknown>;
+    });
+  }, [sorted]);
+
   return (
-    <Card title="Processes">
+    <Card title="Processes" actions={<ExportButton data={exportData} filename="processes" />}>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
