@@ -1,6 +1,15 @@
 /* ── LogsViewer – Loki-powered log viewer with categories ──── */
 
 import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
+
+function useDebounce<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
+}
 import { Card } from '@/components/ui/Card';
 import { get } from '@/lib/api';
 import { useMetricsStore } from '@/stores/metricsStore';
@@ -131,6 +140,12 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
   const [search, setSearch] = useState('');
   const [liveTail, setLiveTail] = useState(true);
 
+  // Debounce filter values to avoid hammering Loki on every keystroke
+  const debouncedSearch = useDebounce(search, 500);
+  const debouncedCategory = useDebounce(selectedCategory, 300);
+  const debouncedValue = useDebounce(selectedValue, 300);
+  const debouncedLevel = useDebounce(levelFilter, 300);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(containerRef);
@@ -155,22 +170,22 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
     setLoading(true);
     try {
       let logqlQuery: string;
-      if (selectedCategory !== 'all' && selectedValue !== 'all') {
-        logqlQuery = `{${selectedCategory}="${selectedValue}"}`;
-      } else if (selectedCategory !== 'all') {
-        logqlQuery = `{${selectedCategory}=~".+"}`;
+      if (debouncedCategory !== 'all' && debouncedValue !== 'all') {
+        logqlQuery = `{${debouncedCategory}="${debouncedValue}"}`;
+      } else if (debouncedCategory !== 'all') {
+        logqlQuery = `{${debouncedCategory}=~".+"}`;
       } else {
         logqlQuery = '{job=~".+"}';
       }
 
       // Add search filter in LogQL
-      if (search) {
-        logqlQuery += ` |~ \`(?i)${search}\``;
+      if (debouncedSearch) {
+        logqlQuery += ` |~ \`(?i)${debouncedSearch}\``;
       }
 
       // Add level filter
-      if (levelFilter !== 'all') {
-        logqlQuery += ` |~ \`(?i)${levelFilter}\``;
+      if (debouncedLevel !== 'all') {
+        logqlQuery += ` |~ \`(?i)${debouncedLevel}\``;
       }
 
       const params = new URLSearchParams({
@@ -204,7 +219,7 @@ export function LogsViewer({ fullHeight = false }: LogsViewerProps) {
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory, selectedValue, search, levelFilter]);
+  }, [debouncedCategory, debouncedValue, debouncedSearch, debouncedLevel]);
 
   // Fetch on mount and when switching away from live tail
   useEffect(() => {
