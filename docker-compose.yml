@@ -11,6 +11,7 @@ services:
       - neo-dock-data:/app/data
     networks:
       - solcloud
+      - monitoring_monitoring
 
 volumes:
   neo-dock-data:
@@ -18,4 +19,7 @@ volumes:
 networks:
   solcloud:
     name: solcloud
+    external: true
+  monitoring_monitoring:
+    name: monitoring_monitoring
     external: true
