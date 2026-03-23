@@ -1,10 +1,11 @@
 /* ── DockerContainers – list, stats, actions, logs, overview ── */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
 import { ExportButton } from '@/components/ui/ExportButton';
-import { post, get } from '@/lib/api';
+import { post, get, del } from '@/lib/api';
 import { useSound } from '@/hooks/useSound';
 import type { ChefContainer, ChefContainerStats, ChefDockerOverview } from '@/types';
 
@@ -148,13 +149,16 @@ function DockerOverviewBar({
 
 /* ── Compact Row (Dashboard) ───────────────────────────────── */
 
-function CompactRow({ c, stats }: { c: ChefContainer; stats: ChefContainerStats | undefined }) {
+function CompactRow({ c, stats, onClick }: { c: ChefContainer; stats: ChefContainerStats | undefined; onClick: () => void }) {
   const badge = stateBadge[c.state ?? ''] ?? defaultBadge;
   const cpuPct = stats?.cpu_percent ?? 0;
   const memPct = stats?.memory_percent ?? 0;
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 border border-neo-border/50 hover:border-neo-red/30 transition-colors">
+    <div 
+      className="flex items-center gap-2 px-3 py-1.5 border border-neo-border/50 hover:border-neo-red/30 transition-colors cursor-pointer"
+      onClick={onClick}
+    >
       <span className={`text-[10px] uppercase font-mono px-1.5 py-0.5 border shrink-0 ${badge}`}>
         {c.state}
       </span>
@@ -189,16 +193,18 @@ function ContainerCard({
   onToggleLogs,
   logs,
   logsLoading,
+  onNavigate,
 }: {
   c: ChefContainer;
   stats: ChefContainerStats | undefined;
   actionLoading: string | null;
   actionError: string | null;
-  onAction: (id: string, action: 'restart' | 'stop') => void;
+  onAction: (id: string, action: 'restart' | 'stop' | 'delete') => void;
   expandedId: string | null;
   onToggleLogs: (id: string) => void;
   logs: string;
   logsLoading: boolean;
+  onNavigate: (id: string) => void;
 }) {
   const badge = stateBadge[c.state ?? ''] ?? defaultBadge;
   const cpuPct = stats?.cpu_percent ?? 0;
@@ -212,7 +218,12 @@ function ContainerCard({
         <span className={`text-[10px] uppercase font-mono px-1.5 py-0.5 border shrink-0 ${badge}`}>
           {c.state}
         </span>
-        <p className="text-sm text-neo-text-primary truncate flex-1 font-mono">{c.name}</p>
+        <button 
+          onClick={() => onNavigate(c.id!)}
+          className="text-sm text-neo-text-primary truncate flex-1 font-mono text-left hover:text-neo-red transition-colors"
+        >
+          {c.name}
+        </button>
         {c.health && (
           <span className={`text-[9px] font-mono uppercase ${healthBadge[c.health] ?? 'text-neo-text-disabled'}`}>
             [{c.health}]
@@ -302,6 +313,22 @@ function ContainerCard({
         >
           LOG
         </button>
+        <button
+          onClick={() => onNavigate(c.id!)}
+          className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-border text-neo-text-secondary hover:text-neo-red hover:border-neo-red/40 transition-colors"
+        >
+          DETAILS
+        </button>
+        {(c.state === 'exited' || c.state === 'stopped') && (
+          <ConfirmButton
+            label="✕"
+            confirmLabel="DELETE?"
+            onConfirm={() => onAction(c.id!, 'delete')}
+            disabled={actionLoading === `${c.id}-delete`}
+            loading={actionLoading === `${c.id}-delete`}
+            variant="danger"
+          />
+        )}
       </div>
 
       {/* Logs panel */}
@@ -330,6 +357,7 @@ interface DockerContainersProps {
 }
 
 export function DockerContainers({ compact = false }: DockerContainersProps) {
+  const navigate = useNavigate();
   const containers = useMetricsStore((s) => s.containers);
   const containerStats = useMetricsStore((s) => s.containerStats);
   const dockerOverview = useMetricsStore((s) => s.dockerOverview);
@@ -366,18 +394,30 @@ export function DockerContainers({ compact = false }: DockerContainersProps) {
   );
 
   const handleAction = useCallback(
-    async (id: string, action: 'restart' | 'stop') => {
+    async (id: string, action: 'restart' | 'stop' | 'delete') => {
       setActionError(null);
       setActionLoading(`${id}-${action}`);
       try {
-        await post(`/chef/docker/containers/${id}/${action}`);
-      } catch {
-        setActionError(`Failed to ${action} container ${id.slice(0, 12)}`);
+        if (action === 'delete') {
+          await del(`/chef/docker/containers/${id}`);
+        } else {
+          await post(`/chef/docker/containers/${id}/${action}`);
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : `Failed to ${action} container`;
+        setActionError(`${errMsg} (${id.slice(0, 12)})`);
       } finally {
         setActionLoading(null);
       }
     },
     [],
+  );
+
+  const handleNavigate = useCallback(
+    (id: string) => {
+      navigate(`/docker/${id}`);
+    },
+    [navigate],
   );
 
   const safeContainers = Array.isArray(containers) ? containers : [];
@@ -421,7 +461,7 @@ export function DockerContainers({ compact = false }: DockerContainersProps) {
             />
           )}
           {safeContainers.map((c) => (
-            <CompactRow key={c.id} c={c} stats={getStats(c)} />
+            <CompactRow key={c.id} c={c} stats={getStats(c)} onClick={() => handleNavigate(c.id!)} />
           ))}
           {safeContainers.length === 0 && !loading && (
             <p className="text-xs text-neo-text-disabled text-center py-4 font-mono">
@@ -465,6 +505,7 @@ export function DockerContainers({ compact = false }: DockerContainersProps) {
               onToggleLogs={toggleLogs}
               logs={logs}
               logsLoading={logsLoading}
+              onNavigate={handleNavigate}
             />
           ))}
         </div>

@@ -18,6 +18,7 @@ import { TasksPage } from '@/pages/TasksPage';
 import { LogsPage } from '@/pages/LogsPage';
 import { RepoDetailPage } from '@/pages/RepoDetailPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { ContainerDetailPage } from '@/pages/ContainerDetailPage';
 import type { TodoItem } from '@/types';
 
 /* ── Route → topic group mapping ──────────────────────────── */
@@ -28,6 +29,7 @@ const ROUTE_GROUPS: Record<string, string[]> = {
   '/':       ALL_GROUPS,
   '/system': ['system', 'services'],
   '/docker': ['docker'],
+  '/docker/:id': ['docker'],
   '/comms':  ['github', 'email'],
   '/tasks':  ['cron', 'todos'],
   '/logs':   ['loki'],
@@ -409,6 +411,7 @@ export default function App() {
               <Route index element={<DashboardPage />} />
               <Route path="system" element={<SystemPage />} />
               <Route path="docker" element={<DockerPage />} />
+              <Route path="docker/:id" element={<ContainerDetailPage />} />
               <Route path="comms" element={<CommsPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="logs" element={<LogsPage />} />
