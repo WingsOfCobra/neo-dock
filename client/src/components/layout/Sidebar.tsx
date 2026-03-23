@@ -9,8 +9,12 @@ interface SidebarProps {
 }
 
 const widgetIcons: Record<WidgetType, string> = {
+  'system-overview': '⬢',
   'server-monitor': '⬡',
   'docker-containers': '◈',
+  'disk-usage': '▦',
+  'top-processes': '▥',
+  'network-monitor': '◇',
   'services-status': '◉',
   'github-dashboard': '⬢',
   'email-inbox': '▣',
