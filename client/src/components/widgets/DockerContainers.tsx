@@ -321,7 +321,7 @@ function ContainerCard({
         </button>
         {(c.state === 'exited' || c.state === 'stopped') && (
           <ConfirmButton
-            label="🗑"
+            label="✕"
             confirmLabel="DELETE?"
             onConfirm={() => onAction(c.id!, 'delete')}
             disabled={actionLoading === `${c.id}-delete`}
