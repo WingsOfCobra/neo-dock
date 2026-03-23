@@ -1,0 +1,90 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+concurrency:
+  group: pr-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    name: Deploy PR Preview
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+
+    steps:
+      - name: Compute ports
+        id: ports
+        run: |
+          PR=${{ github.event.pull_request.number }}
+          echo "server=$((9100 + PR))" >> "$GITHUB_OUTPUT"
+          echo "client=$((9200 + PR))" >> "$GITHUB_OUTPUT"
+
+      - name: Start preview on SOLCloud
+        id: start
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            PR="${{ github.event.pull_request.number }}"
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+            OUTPUT=$(/home/anian/bin/pr-demo start "$PR" "$BRANCH" 2>&1)
+            echo "$OUTPUT"
+            # Write a simple status flag for the next step
+            if echo "$OUTPUT" | grep -q "^AT_CAPACITY"; then
+              echo "at_capacity" > /tmp/pr-demo-status-"$PR"
+            elif echo "$OUTPUT" | grep -qE "^(STARTED|STARTING|ALREADY_RUNNING)"; then
+              echo "ready" > /tmp/pr-demo-status-"$PR"
+            else
+              echo "error" > /tmp/pr-demo-status-"$PR"
+            fi
+
+      - name: Get status
+        id: status
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: cat /tmp/pr-demo-status-${{ github.event.pull_request.number }} 2>/dev/null || echo "error"
+
+      - name: Comment — Preview Ready
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-preview
+          message: |
+            ## 🚀 Preview Environment
+
+            | | URL |
+            |---|---|
+            | **App** | `http://10.13.13.1:${{ steps.ports.outputs.client }}` |
+            | **API** | `http://10.13.13.1:${{ steps.ports.outputs.server }}` |
+
+            > 🔒 Accessible over WireGuard VPN · Updates on every push · Removed when PR closes
+
+  teardown-preview:
+    name: Teardown PR Preview
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+
+    steps:
+      - name: Stop preview on SOLCloud
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: /home/anian/bin/pr-demo stop ${{ github.event.pull_request.number }}
+
+      - name: Comment — Preview Removed
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-preview
+          message: |
+            ## 🗑️ Preview Removed
+
+            PR closed — preview environment has been shut down.
