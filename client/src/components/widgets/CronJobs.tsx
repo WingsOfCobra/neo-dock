@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
 import { ExportButton } from '@/components/ui/ExportButton';
+import { CronJobModal } from '@/components/ui/CronJobModal';
 import { post, get, del } from '@/lib/api';
 import type { ChefCronJob, ChefCronHistory } from '@/types';
 
@@ -56,6 +57,9 @@ export function CronJobs({ compact = false }: CronJobsProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [history, setHistory] = useState<ChefCronHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState<ChefCronJob | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   const handleRun = useCallback(async (job: ChefCronJob) => {
     setError(null);
@@ -69,12 +73,33 @@ export function CronJobs({ compact = false }: CronJobsProps) {
     }
   }, []);
 
-  const handleDelete = useCallback(async (job: ChefCronJob) => {
+  const handleDeleteClick = useCallback((jobId: number) => {
+    setDeleteConfirm(jobId);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async (job: ChefCronJob) => {
+    setDeleteConfirm(null);
     try {
       await del(`/chef/cron/jobs/${job.id}`);
     } catch {
       setError(`Failed to delete ${job.name}`);
     }
+  }, []);
+
+  const handleEdit = useCallback((job: ChefCronJob) => {
+    setEditingJob(job);
+    setModalOpen(true);
+  }, []);
+
+  const handleModalClose = useCallback(() => {
+    setModalOpen(false);
+    setEditingJob(null);
+  }, []);
+
+  const handleModalSuccess = useCallback(() => {
+    // Jobs will be refreshed via WebSocket
+    setModalOpen(false);
+    setEditingJob(null);
   }, []);
 
   const toggleHistory = useCallback(async (job: ChefCronJob) => {
@@ -86,7 +111,7 @@ export function CronJobs({ compact = false }: CronJobsProps) {
     setExpandedId(job.id ?? null);
     setHistoryLoading(true);
     try {
-      const data = await get<ChefCronHistory[]>(`/chef/cron/jobs/${job.id}/history?limit=10`);
+      const data = await get<ChefCronHistory[]>(`/chef/cron/jobs/${job.id}/history?limit=5`);
       setHistory(Array.isArray(data) ? data : []);
     } catch {
       setHistory([]);
@@ -113,8 +138,26 @@ export function CronJobs({ compact = false }: CronJobsProps) {
   }, [jobs]);
 
   return (
-    <Card title="Cron Jobs" loading={loading} actions={<ExportButton data={exportData} filename="cron-jobs" />}>
-      <div className={`space-y-1 ${compact ? 'max-h-72 overflow-y-auto' : ''}`}>
+    <>
+      <Card 
+        title="Cron Jobs" 
+        loading={loading} 
+        actions={
+          <div className="flex items-center gap-2">
+            {!compact && (
+              <button
+                onClick={() => setModalOpen(true)}
+                className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-red text-neo-red hover:bg-neo-red hover:text-neo-bg-deep transition-colors"
+                title="Create new cron job"
+              >
+                + CREATE
+              </button>
+            )}
+            <ExportButton data={exportData} filename="cron-jobs" />
+          </div>
+        }
+      >
+        <div className={`space-y-1 ${compact ? 'max-h-72 overflow-y-auto' : ''}`}>
         {/* Scheduler health summary */}
         {(cronHealth || jobs.length > 0) && (
           <div className="flex items-center gap-3 text-[10px] font-mono pb-2 border-b border-neo-border/30">
@@ -194,24 +237,46 @@ export function CronJobs({ compact = false }: CronJobsProps) {
                     <button
                       onClick={() => toggleHistory(job)}
                       className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-border text-neo-text-disabled hover:text-neo-red hover:border-neo-red/40 transition-colors"
+                      title="View history"
                     >
-                      HIST
+                      ⟳
                     </button>
                   )}
                   <button
                     onClick={() => handleRun(job)}
                     disabled={runningId === job.id || !isEnabled}
                     className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-red/40 text-neo-red hover:bg-neo-red/10 transition-colors disabled:opacity-30 shrink-0"
+                    title="Run now"
                   >
-                    {runningId === job.id ? '...' : 'RUN'}
+                    {runningId === job.id ? '⟳' : '▶'}
                   </button>
                   {!compact && (
-                    <button
-                      onClick={() => handleDelete(job)}
-                      className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-border text-neo-text-disabled hover:text-neo-red hover:border-neo-red/40 transition-colors"
-                    >
-                      DEL
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleEdit(job)}
+                        className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-border text-neo-text-disabled hover:text-neo-red hover:border-neo-red/40 transition-colors"
+                        title="Edit job"
+                      >
+                        ✎
+                      </button>
+                      {deleteConfirm === job.id ? (
+                        <button
+                          onClick={() => handleDeleteConfirm(job)}
+                          className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-red text-neo-red hover:bg-neo-red hover:text-neo-bg-deep transition-colors"
+                          title="Confirm delete"
+                        >
+                          ✓ DEL?
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleDeleteClick(job.id ?? 0)}
+                          className="px-2 py-1 text-[10px] font-mono uppercase border border-neo-border text-neo-text-disabled hover:text-neo-red hover:border-neo-red/40 transition-colors"
+                          title="Delete job"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -267,5 +332,20 @@ export function CronJobs({ compact = false }: CronJobsProps) {
         )}
       </div>
     </Card>
+
+    <CronJobModal
+      open={modalOpen}
+      onClose={handleModalClose}
+      onSuccess={handleModalSuccess}
+      editJob={editingJob ? {
+        id: editingJob.id ?? 0,
+        name: editingJob.name ?? '',
+        schedule: editingJob.schedule ?? '',
+        type: editingJob.type,
+        config: editingJob.config,
+        enabled: editingJob.enabled ?? 0,
+      } : null}
+    />
+  </>
   );
 }
