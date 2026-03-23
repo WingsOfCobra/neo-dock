@@ -28,3 +28,43 @@ jobs:
             docker compose pull
             docker compose down
             docker compose up -d
+
+  deploy-zartmann:
+    name: Deploy chef-node to zartmann
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Deploy chef-node via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 89.58.37.253
+          username: cobra
+          key: ${{ secrets.ZARTMANN_SSH_KEY }}
+          script: |
+            cd ~/chef-api
+            docker compose pull
+            docker compose down
+            docker compose up -d
+            echo "chef-node deployed to zartmann"
+
+  deploy-schrombus:
+    name: Deploy chef-node to schrombus
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Deploy chef-node via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 89.58.44.64
+          username: cobra
+          key: ${{ secrets.SCHROMBUS_SSH_KEY }}
+          script: |
+            cd ~/chef-api
+            docker compose pull
+            docker compose down
+            docker compose up -d
+            echo "chef-node deployed to schrombus"
