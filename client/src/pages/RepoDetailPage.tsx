@@ -16,7 +16,7 @@ interface RepoDetail {
   size: number;
   defaultBranch: string;
   language: string | null;
-  topics: string[];
+  topics?: string[];
   license: string | null;
   visibility: string;
   createdAt: string;
@@ -275,9 +275,9 @@ export function RepoDetailPage() {
                     <span className="text-neo-text-disabled">Last Push</span>
                     <span className="text-neo-text-primary">{timeAgo(detail.pushedAt)}</span>
                   </div>
-                  {detail.topics.length > 0 && (
+                  {detail.topics?.length && detail.topics.length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-1">
-                      {detail.topics.map((t) => (
+                      {detail.topics?.map((t) => (
                         <span key={t} className="px-1.5 py-px text-[9px] border border-neo-border text-neo-text-disabled">
                           {t}
                         </span>

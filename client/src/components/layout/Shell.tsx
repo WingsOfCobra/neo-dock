@@ -59,7 +59,7 @@ export function Shell({ wsConnected, isOffline = false, cacheTimestamp = null }:
 
   return (
     <div className="relative h-screen flex flex-col z-10">
-      <TopBar wsConnected={wsConnected} isOffline={isOffline} />
+      <TopBar wsConnected={wsConnected} isOffline={isOffline} onOpenSettings={openSettings} />
       <OfflineBanner cacheTimestamp={cacheTimestamp} />
       <TabBar />
       <main className="flex-1 overflow-y-auto">

@@ -4,7 +4,7 @@ services:
     container_name: neo-dock
     restart: unless-stopped
     ports:
-      - "${NEO_DOCK_PORT:-3000}:3000"
+      - "${NEO_DOCK_PORT:-3000}:${NEO_DOCK_PORT:-3000}"
     env_file:
       - .env
     volumes:
