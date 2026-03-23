@@ -24,6 +24,7 @@ interface EmailInboxProps {
 export function EmailInbox({ compact = false }: EmailInboxProps) {
   const emailCount = useMetricsStore((s) => s.emailCount);
   const rawEmails = useMetricsStore((s) => s.emails);
+  const loadingStates = useMetricsStore((s) => s.loadingStates);
   const emails = Array.isArray(rawEmails) ? rawEmails : [];
   const [expandedUid, setExpandedUid] = useState<number | null>(null);
   const [threadMessages, setThreadMessages] = useState<NonNullable<ChefEmailThread['messages']>>([]);
@@ -52,7 +53,7 @@ export function EmailInbox({ compact = false }: EmailInboxProps) {
     [expandedUid],
   );
 
-  const loading = emails.length === 0 && emailCount === 0;
+  const loading = (loadingStates['email:unread'] ?? false) || (emailCount === -1 && loadingStates['email:unread'] !== false);
 
   return (
     <Card title="Email" loading={loading}>

@@ -46,8 +46,9 @@ interface ServicesStatusProps {
 
 export function ServicesStatus({ compact = false }: ServicesStatusProps) {
   const rawServices = useMetricsStore((s) => s.services);
+  const loadingStates = useMetricsStore((s) => s.loadingStates);
   const services = Array.isArray(rawServices) ? rawServices : [];
-  const loading = services.length === 0;
+  const loading = (loadingStates['services:status'] ?? false) || (services.length === 0 && loadingStates['services:status'] !== false);
 
   const activeCount = services.filter((s) => s.active).length;
   const failedCount = services.filter((s) => s.status === 'failed' || s.status === 'inactive').length;

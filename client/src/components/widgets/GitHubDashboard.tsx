@@ -53,13 +53,14 @@ export function GitHubDashboard({ compact = false }: GitHubDashboardProps) {
   const rawPRs = useMetricsStore((s) => s.githubPRs);
   const rawIssues = useMetricsStore((s) => s.githubIssues);
   const rawWorkflows = useMetricsStore((s) => s.githubWorkflows);
+  const loadingStates = useMetricsStore((s) => s.loadingStates);
 
   const repos = Array.isArray(rawRepos) ? rawRepos : [];
   const notifications = Array.isArray(rawNotifications) ? rawNotifications : [];
   const prs = Array.isArray(rawPRs) ? rawPRs : [];
   const issues = Array.isArray(rawIssues) ? rawIssues : [];
   const workflows = Array.isArray(rawWorkflows) ? rawWorkflows : [];
-  const loading = repos.length === 0;
+  const loading = (loadingStates['github:repos'] ?? false) || (repos.length === 0 && loadingStates['github:repos'] !== false);
 
   const unreadCount = notifications.length;
   const sortedRepos = [...repos]

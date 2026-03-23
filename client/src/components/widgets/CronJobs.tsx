@@ -51,6 +51,7 @@ interface CronJobsProps {
 export function CronJobs({ compact = false }: CronJobsProps) {
   const rawJobs = useMetricsStore((s) => s.cronJobs);
   const cronHealth = useMetricsStore((s) => s.cronHealth);
+  const loadingStates = useMetricsStore((s) => s.loadingStates);
   const jobs = Array.isArray(rawJobs) ? rawJobs : [];
   const [runningId, setRunningId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +121,7 @@ export function CronJobs({ compact = false }: CronJobsProps) {
     }
   }, [expandedId]);
 
-  const loading = jobs.length === 0;
+  const loading = (loadingStates['cron:jobs'] ?? false) || (jobs.length === 0 && loadingStates['cron:jobs'] !== false);
   const enabledCount = jobs.filter((j) => j.enabled === 1).length;
 
   const exportData = useMemo(() => {
