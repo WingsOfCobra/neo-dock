@@ -10,3 +10,5 @@ client/dist/
 server/dist/
 server/data/
 coverage/
+playwright-report/
+test-results/
