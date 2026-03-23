@@ -8,6 +8,10 @@ concurrency:
   group: pr-preview-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
+permissions:
+  pull-requests: write
+  issues: write
+
 jobs:
   deploy-preview:
     name: Deploy PR Preview
@@ -34,7 +38,6 @@ jobs:
             BRANCH="${{ github.event.pull_request.head.ref }}"
             OUTPUT=$(/home/anian/bin/pr-demo start "$PR" "$BRANCH" 2>&1)
             echo "$OUTPUT"
-            # Write a simple status flag for the next step
             if echo "$OUTPUT" | grep -q "^AT_CAPACITY"; then
               echo "at_capacity" > /tmp/pr-demo-status-"$PR"
             elif echo "$OUTPUT" | grep -qE "^(STARTED|STARTING|ALREADY_RUNNING)"; then
@@ -53,9 +56,11 @@ jobs:
           script: cat /tmp/pr-demo-status-${{ github.event.pull_request.number }} 2>/dev/null || echo "error"
 
       - name: Comment — Preview Ready
+        if: ${{ !contains(steps.status.outputs.stdout, 'at_capacity') }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: pr-preview
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |
             ## 🚀 Preview Environment
 
@@ -65,6 +70,18 @@ jobs:
             | **API** | `http://10.13.13.1:${{ steps.ports.outputs.server }}` |
 
             > 🔒 Accessible over WireGuard VPN · Updates on every push · Removed when PR closes
+
+      - name: Comment — At Capacity
+        if: ${{ contains(steps.status.outputs.stdout, 'at_capacity') }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-preview
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            ## ⚠️ Preview Unavailable
+
+            Too many preview environments are already running (max 5).
+            A slot will open when another PR is closed.
 
   teardown-preview:
     name: Teardown PR Preview
@@ -84,6 +101,7 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: pr-preview
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           message: |
             ## 🗑️ Preview Removed
 
