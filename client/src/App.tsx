@@ -257,12 +257,15 @@ function useWsConnection() {
           }
           case 'services:status':
             s.setServices(asArray(d) as Parameters<typeof s.setServices>[0]);
+            s.setLoading('services:status', false);
             break;
           case 'github:repos':
             s.setGithubRepos(asArray(d) as Parameters<typeof s.setGithubRepos>[0]);
+            s.setLoading('github:repos', false);
             break;
           case 'github:notifications':
             s.setGithubNotifications(asArray(d) as Parameters<typeof s.setGithubNotifications>[0]);
+            s.setLoading('github:notifications', false);
             break;
           case 'email:unread': {
             const payload = asObj(d);
@@ -271,6 +274,7 @@ function useWsConnection() {
               const prevCount = s.emailCount;
               s.setEmailCount(newCount);
               s.setEmails(asArray(payload['messages']) as Parameters<typeof s.setEmails>[0]);
+              s.setLoading('email:unread', false);
               if (newCount > prevCount && prevCount >= 0) {
                 s.addNotification({
                   type: 'info',
@@ -286,6 +290,7 @@ function useWsConnection() {
             const prevJobs = s.cronJobs;
             const newJobs = asArray(d) as Parameters<typeof s.setCronJobs>[0];
             s.setCronJobs(newJobs);
+            s.setLoading('cron:jobs', false);
             // Notify on cron failures
             if (prevJobs.length > 0) {
               for (const job of newJobs) {

@@ -38,6 +38,10 @@ const DEDUP_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_NOTIFICATIONS = 50;
 
 interface MetricsState {
+  /* ── Loading states ──────────────────────────────────────── */
+  loadingStates: Record<string, boolean>; // topic -> isLoading
+  setLoading: (topic: string, loading: boolean) => void;
+  
   /* ── System ─────────────────────────────────────────────── */
   systemHealth: ChefSystemHealth | null;
   systemDisk: ChefDiskInfo[];
@@ -117,6 +121,12 @@ const MAX_NETWORK_HISTORY = 300; // 5 min at 1pt/sec
 const MAX_LOKI_LOGS = 2000;
 
 export const useMetricsStore = create<MetricsState>()((set) => ({
+  loadingStates: {},
+  setLoading: (topic, loading) =>
+    set((s) => ({
+      loadingStates: { ...s.loadingStates, [topic]: loading },
+    })),
+  
   systemHealth: null,
   systemDisk: [],
   systemProcesses: [],
@@ -132,7 +142,7 @@ export const useMetricsStore = create<MetricsState>()((set) => ({
   githubPRs: [],
   githubIssues: [],
   githubWorkflows: [],
-  emailCount: 0,
+  emailCount: -1, // -1 = not loaded yet, 0 = loaded with no emails
   emails: [],
   cronJobs: [],
   cronHealth: null,
