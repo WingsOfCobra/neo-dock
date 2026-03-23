@@ -28,10 +28,13 @@ export function Card({
   className = '',
   actions,
 }: CardProps) {
+  // Only use h-full when not loading and not in an error state
+  const heightClass = (loading || error) ? '' : 'h-full';
+  
   return (
     <div
       className={`
-        relative h-full bg-neo-bg-surface/90 border border-neo-border
+        relative ${heightClass} bg-neo-bg-surface/90 border border-neo-border
         overflow-hidden pulse-glow
         ${className}
       `.trim()}

@@ -17,6 +17,7 @@ import { CommsPage } from '@/pages/CommsPage';
 import { TasksPage } from '@/pages/TasksPage';
 import { LogsPage } from '@/pages/LogsPage';
 import { RepoDetailPage } from '@/pages/RepoDetailPage';
+import { SettingsPage } from '@/pages/SettingsPage';
 import { ContainerDetailPage } from '@/pages/ContainerDetailPage';
 import type { TodoItem } from '@/types';
 
@@ -32,6 +33,7 @@ const ROUTE_GROUPS: Record<string, string[]> = {
   '/comms':  ['github', 'email'],
   '/tasks':  ['cron', 'todos'],
   '/logs':   ['loki'],
+  '/settings': [],
   '/repo/:owner/:repo': ['github'],
 };
 
@@ -413,6 +415,7 @@ export default function App() {
               <Route path="comms" element={<CommsPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="logs" element={<LogsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
               <Route path="repo/:owner/:repo" element={<RepoDetailPage />} />
             </Route>
           </Routes>
