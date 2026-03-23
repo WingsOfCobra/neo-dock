@@ -2,6 +2,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public body?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -24,8 +25,27 @@ export async function apiFetch<T = unknown>(
   });
 
   if (!res.ok) {
-    const body = await res.text().catch(() => 'Unknown error');
-    throw new ApiError(res.status, body);
+    let errorMessage = 'Unknown error';
+    let errorBody: unknown;
+
+    try {
+      const contentType = res.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        errorBody = await res.json();
+        // Chef API returns { error: string, message?: string }
+        if (typeof errorBody === 'object' && errorBody !== null) {
+          const err = errorBody as Record<string, unknown>;
+          errorMessage = (err.error as string) || (err.message as string) || errorMessage;
+        }
+      } else {
+        const text = await res.text();
+        errorMessage = text || errorMessage;
+      }
+    } catch {
+      // Failed to parse error body, use default
+    }
+
+    throw new ApiError(res.status, errorMessage, errorBody);
   }
 
   if (res.status === 204) return undefined as T;
