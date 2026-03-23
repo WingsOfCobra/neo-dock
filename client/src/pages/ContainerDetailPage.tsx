@@ -109,6 +109,9 @@ export function ContainerDetailPage() {
   const ports = detail?.NetworkSettings?.Ports ?? {};
   const mounts = detail?.Mounts ?? [];
   const env = detail?.Config?.Env ?? [];
+  
+  // Filter out null port bindings for cleaner display
+  const activePorts = Object.entries(ports).filter(([_, bindings]) => bindings !== null && bindings !== undefined);
 
   return (
     <div className="p-3 space-y-3 animate-fade-in">
@@ -184,22 +187,22 @@ export function ContainerDetailPage() {
         </Card>
 
         {/* Ports */}
-        <Card title="Ports">
+        <Card title="Ports" loading={loading}>
           <div className="space-y-1 max-h-64 overflow-y-auto">
-            {Object.entries(ports).map(([containerPort, hostBindings]) => (
+            {activePorts.map(([containerPort, hostBindings]) => (
               <div key={containerPort} className="flex items-center gap-2 px-2 py-1 font-mono text-[11px] hover:bg-neo-red/[0.03]">
                 <span className="text-neo-red">{containerPort}</span>
                 <span className="text-neo-text-disabled">→</span>
                 {hostBindings && hostBindings.length > 0 ? (
                   <span className="text-neo-text-primary">
-                    {hostBindings.map((b) => `${b.HostIp}:${b.HostPort}`).join(', ')}
+                    {hostBindings.map((b) => `${b.HostIp === '' || b.HostIp === '0.0.0.0' ? '*' : b.HostIp}:${b.HostPort}`).join(', ')}
                   </span>
                 ) : (
                   <span className="text-neo-text-disabled">not published</span>
                 )}
               </div>
             ))}
-            {Object.keys(ports).length === 0 && !loading && (
+            {activePorts.length === 0 && !loading && (
               <p className="text-[10px] font-mono text-neo-text-disabled px-2">No ports exposed</p>
             )}
           </div>
