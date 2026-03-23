@@ -49,7 +49,7 @@ export type ChefDockerOverview = GetJson<'/docker/stats'>;
 export type ChefGitHubRepo = ArrayElement<GetJson<'/github/repos'>>;
 export type ChefGitHubPR = ArrayElement<GetJson<'/github/repos/{owner}/{repo}/prs'>>;
 export type ChefGitHubIssue = ArrayElement<GetJson<'/github/repos/{owner}/{repo}/issues'>>;
-export type ChefGitHubWorkflow = ArrayElement<GetJson<'/github/repos/{owner}/{repo}/workflows'>>;
+export type ChefGitHubWorkflow = ArrayElement<GetJson<'/github/workflows'>>;
 export type ChefGitHubNotification = ArrayElement<GetJson<'/github/notifications'>>;
 
 /* ── Email ───────────────────────────────────────────────────── */
