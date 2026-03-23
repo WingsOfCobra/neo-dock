@@ -228,7 +228,7 @@ export function FleetPage() {
 
       {/* Command Results */}
       {runResults.length > 0 && (
-        <Card title="Command Results" glowColor="green">
+        <Card title="Command Results" glowColor="cyan">
           <div className="space-y-3">
             {runResults.map((result, idx) => (
               <div

@@ -286,7 +286,7 @@ export function AlertsPage() {
 
       {/* History Tab */}
       {activeTab === 'history' && (
-        <Card title="Alert History (Last 100)" glowColor="green">
+        <Card title="Alert History (Last 100)" glowColor="cyan">
           <div className="space-y-1">
             {history.length === 0 ? (
               <p className="text-xs font-mono text-neo-text-secondary">No alert history</p>

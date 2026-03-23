@@ -248,7 +248,7 @@ export function AnsiblePage() {
 
       {/* Inventory Tab */}
       {activeTab === 'inventory' && (
-        <Card title="Ansible Inventory" glowColor="green">
+        <Card title="Ansible Inventory" glowColor="cyan">
           <div className="space-y-2">
             {inventory.length === 0 ? (
               <p className="text-xs font-mono text-neo-text-secondary">No inventory items found</p>
