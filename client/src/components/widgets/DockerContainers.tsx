@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { Card } from '@/components/ui/Card';
 import { ExportButton } from '@/components/ui/ExportButton';
+import { WidgetError } from '@/components/ui/WidgetError';
 import { post, get, del } from '@/lib/api';
 import { useSound } from '@/hooks/useSound';
 import type { ChefContainer, ChefContainerStats, ChefDockerOverview } from '@/types';
@@ -452,6 +453,9 @@ export function DockerContainers({ compact = false }: DockerContainersProps) {
     return (
       <Card title="Docker" loading={loading} actions={exportAction}>
         <div className="space-y-1.5 max-h-72 overflow-y-auto">
+          {actionError && (
+            <WidgetError service="Docker" message={actionError} compact />
+          )}
           {(dockerOverview || safeContainers.length > 0) && (
             <DockerOverviewBar
               dockerOverview={dockerOverview}
@@ -487,9 +491,7 @@ export function DockerContainers({ compact = false }: DockerContainersProps) {
         )}
 
         {actionError && (
-          <div className="text-neo-red text-xs font-mono">
-            [!] {actionError}
-          </div>
+          <WidgetError service="Docker" message={actionError} />
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">

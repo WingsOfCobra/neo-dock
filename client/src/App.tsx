@@ -5,11 +5,13 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useMetricsStore } from '@/stores/metricsStore';
 import { useServerStore } from '@/stores/serverStore';
+import { useErrorStore } from '@/stores/errorStore';
 import { WebSocketClient, type WsMessage } from '@/lib/ws';
 import { scheduleSave, startOfflineHydration, type OfflineCacheData } from '@/lib/offlineCache';
 import { LoginGate } from '@/components/auth/LoginGate';
 import { Shell } from '@/components/layout/Shell';
 import { Background } from '@/components/three/Background';
+import { ErrorToast } from '@/components/ui/ErrorToast';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { SystemPage } from '@/pages/SystemPage';
 import { DockerPage } from '@/pages/DockerPage';
@@ -420,7 +422,29 @@ export default function App() {
             </Route>
           </Routes>
         </ErrorBoundary>
+        <GlobalErrorToast />
       </div>
     </BrowserRouter>
+  );
+}
+
+/* ── Global Error Toast ────────────────────────────────────── */
+
+function GlobalErrorToast() {
+  const errors = useErrorStore((state) => state.errors);
+  const dismissError = useErrorStore((state) => state.dismissError);
+  const apiUnreachable = useErrorStore((state) => state.apiUnreachable);
+
+  return (
+    <>
+      {apiUnreachable && (
+        <div className="fixed top-0 left-0 right-0 z-[9998] bg-neo-red/90 border-b border-neo-red p-2 text-center">
+          <span className="font-mono text-xs text-neo-bg-deep">
+            ⚠ Chef API unreachable — check connection
+          </span>
+        </div>
+      )}
+      <ErrorToast errors={errors} onDismiss={dismissError} />
+    </>
   );
 }
