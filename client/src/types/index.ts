@@ -59,7 +59,11 @@ export type WidgetType =
   | 'email-inbox'
   | 'todo-list'
   | 'logs-viewer'
-  | 'cron-jobs';
+  | 'cron-jobs'
+  | 'system-overview'
+  | 'disk-usage'
+  | 'top-processes'
+  | 'network-monitor';
 
 export interface WidgetConfig {
   id: string;
