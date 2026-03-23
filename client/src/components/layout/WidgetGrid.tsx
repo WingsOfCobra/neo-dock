@@ -14,7 +14,7 @@ import {
   type Layouts,
 } from '@/lib/constants';
 import { get, post, put, del, ApiError } from '@/lib/api';
-import type { Dashboard, ActiveDashboard } from '@/types/dashboard';
+import type { Dashboard, ActiveDashboard, DashboardApiResponse } from '@/types/dashboard';
 
 import { SystemOverview } from '@/components/widgets/SystemOverview';
 import { DiskUsage } from '@/components/widgets/DiskUsage';
@@ -238,21 +238,32 @@ export function WidgetGrid() {
     try {
       // Try to get active dashboard
       const activeData = await get<ActiveDashboard>('/chef/dashboards/active');
-      const dashboardsData = await get<Dashboard[]>('/chef/dashboards');
+      const dashboardsDataRaw = await get<DashboardApiResponse[]>('/chef/dashboards');
+
+      // Convert API response to typed dashboards
+      const dashboardsData: Dashboard[] = dashboardsDataRaw.map((d) => ({
+        ...d,
+        widgets: d.widgets as Layouts, // API returns JSON, cast to Layouts
+      }));
 
       if (dashboardsData.length === 0) {
         // No dashboards exist, create default
-        const defaultDashboard = await post<Dashboard>('/chef/dashboards', {
+        const defaultDashboardRaw = await post<DashboardApiResponse>('/chef/dashboards', {
           name: 'Default',
           widgets: DEFAULT_LAYOUTS,
         });
+        const defaultDashboard: Dashboard = {
+          ...defaultDashboardRaw,
+          widgets: defaultDashboardRaw.widgets as Layouts,
+        };
         setDashboards([defaultDashboard]);
         await post(`/chef/dashboards/${defaultDashboard.id}/activate`, {});
         setActiveDashboardId(defaultDashboard.id);
         setLayouts(defaultDashboard.widgets);
       } else {
         setDashboards(dashboardsData);
-        const activeId = activeData.activeId ?? dashboardsData[0].id;
+        // Fix: API returns activeDashboardId, not activeId
+        const activeId = activeData.activeDashboardId ?? dashboardsData[0].id;
         setActiveDashboardId(activeId);
         const active = dashboardsData.find((d) => d.id === activeId);
         if (active) {
@@ -333,10 +344,14 @@ export function WidgetGrid() {
     if (!name) return;
 
     try {
-      const newDashboard = await post<Dashboard>('/chef/dashboards', {
+      const newDashboardRaw = await post<DashboardApiResponse>('/chef/dashboards', {
         name,
         widgets: DEFAULT_LAYOUTS,
       });
+      const newDashboard: Dashboard = {
+        ...newDashboardRaw,
+        widgets: newDashboardRaw.widgets as Layouts,
+      };
       setDashboards((prev) => [...prev, newDashboard]);
       await post(`/chef/dashboards/${newDashboard.id}/activate`, {});
       setActiveDashboardId(newDashboard.id);
