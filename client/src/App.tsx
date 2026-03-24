@@ -21,9 +21,7 @@ import { LogsPage } from '@/pages/LogsPage';
 import { RepoDetailPage } from '@/pages/RepoDetailPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { ContainerDetailPage } from '@/pages/ContainerDetailPage';
-import { FleetPage } from '@/pages/FleetPage';
 import { AnsiblePage } from '@/pages/AnsiblePage';
-import { SecretsPage } from '@/pages/SecretsPage';
 import { AlertsPage } from '@/pages/AlertsPage';
 import type { TodoItem } from '@/types';
 
@@ -39,9 +37,7 @@ const ROUTE_GROUPS: Record<string, string[]> = {
   '/comms':  ['github', 'email'],
   '/tasks':  ['cron', 'todos'],
   '/logs':   ['loki'],
-  '/fleet':  ['system'],
   '/ansible': [],
-  '/secrets': [],
   '/alerts': ['system'],
   '/settings': [],
   '/repo/:owner/:repo': ['github'],
@@ -430,9 +426,7 @@ export default function App() {
               <Route path="comms" element={<CommsPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="logs" element={<LogsPage />} />
-              <Route path="fleet" element={<FleetPage />} />
               <Route path="ansible" element={<AnsiblePage />} />
-              <Route path="secrets" element={<SecretsPage />} />
               <Route path="alerts" element={<AlertsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="repo/:owner/:repo" element={<RepoDetailPage />} />

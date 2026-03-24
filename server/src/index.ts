@@ -8,6 +8,7 @@ import fastifyStatic from '@fastify/static';
 import { config } from './config.js';
 import { authPreHandler } from './auth.js';
 import { authRoutes } from './routes/auth.js';
+import { dashboardRoutes } from './routes/dashboards.js';
 import { proxyRoutes } from './routes/proxy.js';
 import { layoutRoutes } from './routes/layout.js';
 import { metricsRoutes } from './routes/metrics.js';
@@ -34,6 +35,8 @@ async function main(): Promise<void> {
 
   // --- API Routes ---
   await fastify.register(authRoutes);
+  // dashboardRoutes must be before proxyRoutes so /api/chef/dashboards/* is handled locally
+  await fastify.register(dashboardRoutes);
   await fastify.register(proxyRoutes);
   await fastify.register(layoutRoutes);
   await fastify.register(metricsRoutes);
