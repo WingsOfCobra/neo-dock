@@ -17,8 +17,8 @@ const TABS: TabDef[] = [
   { to: '/comms', label: 'COMMS', shortLabel: 'COM', shortcut: 'g+c' },
   { to: '/tasks', label: 'TASKS', shortLabel: 'TSK', shortcut: 'g+t' },
   { to: '/logs', label: 'LOGS', shortLabel: 'LOG', shortcut: 'g+l' },
-  { to: '/ansible', label: 'ANSIBLE', shortLabel: 'ANS', shortcut: 'g+a' },
-  { to: '/alerts', label: 'ALERTS', shortLabel: 'ALT', shortcut: 'g+x' },
+
+
 ];
 
 export function TabBar() {

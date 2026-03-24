@@ -21,8 +21,7 @@ import { LogsPage } from '@/pages/LogsPage';
 import { RepoDetailPage } from '@/pages/RepoDetailPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { ContainerDetailPage } from '@/pages/ContainerDetailPage';
-import { AnsiblePage } from '@/pages/AnsiblePage';
-import { AlertsPage } from '@/pages/AlertsPage';
+
 import type { TodoItem } from '@/types';
 
 /* ── Route → topic group mapping ──────────────────────────── */
@@ -37,8 +36,7 @@ const ROUTE_GROUPS: Record<string, string[]> = {
   '/comms':  ['github', 'email'],
   '/tasks':  ['cron', 'todos'],
   '/logs':   ['loki'],
-  '/ansible': [],
-  '/alerts': ['system'],
+
   '/settings': [],
   '/repo/:owner/:repo': ['github'],
 };
@@ -426,8 +424,7 @@ export default function App() {
               <Route path="comms" element={<CommsPage />} />
               <Route path="tasks" element={<TasksPage />} />
               <Route path="logs" element={<LogsPage />} />
-              <Route path="ansible" element={<AnsiblePage />} />
-              <Route path="alerts" element={<AlertsPage />} />
+
               <Route path="settings" element={<SettingsPage />} />
               <Route path="repo/:owner/:repo" element={<RepoDetailPage />} />
             </Route>
