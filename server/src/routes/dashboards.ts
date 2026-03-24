@@ -34,10 +34,16 @@ db.exec(`
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function parseDashboard(row: Record<string, unknown>) {
+  let widgets: unknown;
+  try {
+    widgets = JSON.parse((row['widgets'] as string) || '[]');
+  } catch {
+    widgets = [];
+  }
   return {
     id: row['id'],
     name: row['name'],
-    widgets: JSON.parse((row['widgets'] as string) || '[]'),
+    widgets,
     createdAt: row['created_at'],
     updatedAt: row['updated_at'],
   };
@@ -69,8 +75,9 @@ export async function dashboardRoutes(fastify: FastifyInstance): Promise<void> {
     const name = (body?.['name'] as string) || 'Dashboard';
     const widgets = body?.['widgets'];
 
-    if (!Array.isArray(widgets)) {
-      return reply.code(400).send({ error: 'widgets must be an array' });
+    // Accept both flat WidgetItem[] and Layouts object {lg, md, sm}
+    if (widgets === undefined || widgets === null) {
+      return reply.code(400).send({ error: 'widgets is required' });
     }
 
     const stmt = db.prepare(
@@ -87,8 +94,8 @@ export async function dashboardRoutes(fastify: FastifyInstance): Promise<void> {
     const name = (body?.['name'] as string) || 'Dashboard';
     const widgets = body?.['widgets'];
 
-    if (!Array.isArray(widgets)) {
-      return reply.code(400).send({ error: 'widgets must be an array' });
+    if (widgets === undefined || widgets === null) {
+      return reply.code(400).send({ error: 'widgets is required' });
     }
 
     const stmt = db.prepare(
