@@ -8,60 +8,53 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to Server
-    runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    uses: LMCustoms/.github/.github/workflows/deploy-ssh.yml@main
+    with:
+      script: |
+        cd ${{ secrets.DEPLOY_DIR }}
+        # Read actual port from .env (fallback to 4453)
+        PORT=$(grep '^NEO_DOCK_PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "4453")
+        PORT=${PORT:-4453}
 
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_DIR }}
-            # Read actual port from .env (fallback to 4453)
-            PORT=$(grep '^NEO_DOCK_PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "4453")
-            PORT=${PORT:-4453}
+        # Sync docker-compose.yml from repo
+        curl -fsSL https://raw.githubusercontent.com/WingsOfCobra/neo-dock/main/docker-compose.yml -o docker-compose.yml.new
+        mv docker-compose.yml.new docker-compose.yml
 
-            # Sync docker-compose.yml from repo
-            curl -fsSL https://raw.githubusercontent.com/WingsOfCobra/neo-dock/main/docker-compose.yml -o docker-compose.yml.new
-            mv docker-compose.yml.new docker-compose.yml
+        # Deploy
+        docker compose pull
+        docker compose down
+        docker compose up -d
 
-            # Deploy
-            docker compose pull
-            docker compose down
-            docker compose up -d
+        # ── Smoke test ───────────────────────────────────────────────────
+        echo "Waiting for neo-dock to come up on port $PORT..."
+        STATUS="000"
+        for i in $(seq 1 24); do
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${PORT}/api/auth/check" 2>/dev/null)
+          if [ "$STATUS" != "000" ] && [ -n "$STATUS" ]; then
+            echo "App responding (HTTP $STATUS)"
+            break
+          fi
+          echo "  attempt $i/24..."
+          sleep 5
+        done
 
-            # ── Smoke test ───────────────────────────────────────────────────
-            echo "Waiting for neo-dock to come up on port $PORT..."
-            STATUS="000"
-            for i in $(seq 1 24); do
-              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${PORT}/api/auth/check" 2>/dev/null)
-              if [ "$STATUS" != "000" ] && [ -n "$STATUS" ]; then
-                echo "App responding (HTTP $STATUS)"
-                break
-              fi
-              echo "  attempt $i/24..."
-              sleep 5
-            done
-
-            case "$STATUS" in
-              401|403)
-                echo "✓ Smoke test passed — auth check returned $STATUS (unauthenticated as expected)"
-                ;;
-              200)
-                echo "✓ Smoke test passed — auth check returned 200"
-                ;;
-              000|"")
-                echo "✗ Smoke test FAILED — app not reachable after 2 minutes"
-                docker compose logs --tail=50
-                exit 1
-                ;;
-              *)
-                echo "✗ Smoke test FAILED — unexpected HTTP $STATUS"
-                docker compose logs --tail=50
-                exit 1
-                ;;
-            esac
+        case "$STATUS" in
+          401|403)
+            echo "✓ Smoke test passed — auth check returned $STATUS (unauthenticated as expected)"
+            ;;
+          200)
+            echo "✓ Smoke test passed — auth check returned 200"
+            ;;
+          000|"")
+            echo "✗ Smoke test FAILED — app not reachable after 2 minutes"
+            docker compose logs --tail=50
+            exit 1
+            ;;
+          *)
+            echo "✗ Smoke test FAILED — unexpected HTTP $STATUS"
+            docker compose logs --tail=50
+            exit 1
+            ;;
+        esac
+    secrets: inherit
