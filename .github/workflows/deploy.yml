@@ -1,60 +1,23 @@
-name: Deploy
+name: Provision (Initial Setup)
 
 on:
-  workflow_run:
-    workflows: ["Build & Push Docker Image"]
-    types:
-      - completed
+  workflow_dispatch:
 
 jobs:
-  deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  provision:
+    name: Initial Deploy to SOLCloud
     uses: LMCustoms/.github/.github/workflows/deploy-ssh.yml@main
     with:
       script: |
-        cd ${{ secrets.DEPLOY_DIR }}
-        # Read actual port from .env (fallback to 4453)
-        PORT=$(grep '^NEO_DOCK_PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "4453")
-        PORT=${PORT:-4453}
-
-        # Sync docker-compose.yml from repo
-        curl -fsSL https://raw.githubusercontent.com/WingsOfCobra/neo-dock/main/docker-compose.yml -o docker-compose.yml.new
-        mv docker-compose.yml.new docker-compose.yml
-
-        # Deploy
+        cd /home/anian/neo-dock
+        curl -fsSL https://raw.githubusercontent.com/LMCustoms/neo-dock/main/docker-compose.yml -o docker-compose.yml
+        echo "$GHCR_TOKEN" | docker login ghcr.io -u LMCustoms --password-stdin
         docker compose pull
-        docker compose down
-        docker compose up -d
-
-        # ── Smoke test ───────────────────────────────────────────────────
-        echo "Waiting for neo-dock to come up on port $PORT..."
-        STATUS="000"
-        for i in $(seq 1 24); do
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${PORT}/api/auth/check" 2>/dev/null)
-          if [ "$STATUS" != "000" ] && [ -n "$STATUS" ]; then
-            echo "App responding (HTTP $STATUS)"
-            break
-          fi
-          echo "  attempt $i/24..."
-          sleep 5
-        done
-
-        case "$STATUS" in
-          401|403)
-            echo "✓ Smoke test passed — auth check returned $STATUS (unauthenticated as expected)"
-            ;;
-          200)
-            echo "✓ Smoke test passed — auth check returned 200"
-            ;;
-          000|"")
-            echo "✗ Smoke test FAILED — app not reachable after 2 minutes"
-            docker compose logs --tail=50
-            exit 1
-            ;;
-          *)
-            echo "✗ Smoke test FAILED — unexpected HTTP $STATUS"
-            docker compose logs --tail=50
-            exit 1
-            ;;
-        esac
-    secrets: inherit
+        docker compose up -d --force-recreate
+        docker image prune -f
+        docker logout ghcr.io
+    secrets:
+      DEPLOY_HOST: ${{ secrets.HOST }}
+      DEPLOY_USER: ${{ secrets.USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.SSH_KEY }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
